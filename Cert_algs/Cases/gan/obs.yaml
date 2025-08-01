@@ -1,0 +1,12 @@
+
+
+
+modelname : 'OBS'
+dataname : 'obs'
+
+
+gen_id : 'ID_192'
+
+traj_len : 14
+xdim : 2
+latent_dim : 14

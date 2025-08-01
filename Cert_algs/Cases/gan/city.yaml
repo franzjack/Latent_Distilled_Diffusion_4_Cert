@@ -1,0 +1,9 @@
+modelname : '3DMAP'
+dataname : 'city'
+
+
+gen_id : 'ID_39'
+
+traj_len : 30
+xdim : 3
+latent_dim : 30

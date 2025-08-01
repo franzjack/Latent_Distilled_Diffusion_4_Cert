@@ -1,0 +1,13 @@
+
+
+
+modelname : 'MAZE'
+dataname : 'maze'
+
+gen_id : 'ID_182'
+
+traj_len : 23
+xdim : 2
+latent_dim : 23
+
+

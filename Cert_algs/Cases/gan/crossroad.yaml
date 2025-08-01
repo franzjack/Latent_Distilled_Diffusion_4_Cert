@@ -1,0 +1,11 @@
+
+
+
+modelname : 'CROSS'
+dataname : 'crossroad'
+
+gen_id : 'ID_67'
+
+traj_len : 31
+xdim : 2
+latent_dim : 31

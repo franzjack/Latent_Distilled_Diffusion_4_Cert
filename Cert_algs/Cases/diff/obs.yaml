@@ -1,0 +1,11 @@
+
+
+
+modelname : 'OBS'
+dataname : 'obs'
+
+gen_id : 'ID_UNC72/distill_6'
+
+traj_len : 15
+xdim : 2
+latent_dim : 15

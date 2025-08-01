@@ -1,0 +1,11 @@
+
+
+
+modelname : 'HCROSS'
+dataname : 'half_cross'
+
+gen_id : 'ID_180'
+
+traj_len : 16
+xdim : 2
+latent_dim : 16
