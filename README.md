@@ -1,0 +1,1 @@
+In this repository (derived from our previous work Certified_Generation_4_Planning https://github.com/franzjack/Certified_Generation_4_Planning.git). Here both progressive distillation and latent diffusion are used in combination of the AutoLiRPA tool to provide certified outputs for diffusion models.
