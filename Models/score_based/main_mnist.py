@@ -287,7 +287,7 @@ class CSDI_base(nn.Module):
     
     def stud_evaluate_implicit(self, batch, n_samples, latent):
         
-        observed_data = self.process_data(batch)
+        observed_data = batch
 
         with torch.no_grad():
 
@@ -542,7 +542,7 @@ class CSDI_base(nn.Module):
 
     def evaluate_stud_and_teach(self, teacher_model, batch, n_samples):
 
-        observed_data = self.process_data(batch)
+        observed_data = batch
 
         with torch.no_grad():
 
@@ -589,7 +589,7 @@ class CSDI_base(nn.Module):
     
     def evaluate_from_latent(self, batch, latent):
 
-        observed_data = self.process_data(batch)
+        observed_data = batch
 
         with torch.no_grad():
 
@@ -599,7 +599,7 @@ class CSDI_base(nn.Module):
         return samples, observed_data
 
     def latent_builder(self, batch, nsample):
-        observed_data = self.process_data(batch)
+        observed_data = batch
 
         latent = []
 

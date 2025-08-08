@@ -18,4 +18,4 @@ cd /u/f_giacomarra/repos/Certified_Generation_4_Planning
 
 
 
-python Models/score_based/exec_distillation_mnist.py --model_name "MNIST" --map_type "MNIST"  --nepochs 100 --config "base32.yaml"
+python Models/score_based/exec_distillation_mnist.py --model_name "MNIST" --map_type "MNIST"  --nepochs 30 --config "base32.yaml"

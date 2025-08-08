@@ -1128,7 +1128,10 @@ def train_student_mnist(
     # Plotting losses
     plt.plot(np.arange(len(losses)), losses, color='b', label='train')
     if valid_loader is not None and val_losses:
-        plt.plot(np.arange(start=0, stop=len(losses), step=valid_epoch_interval), val_losses, color='g', label='valid')
+        try:
+            plt.plot(np.arange(start=0, stop=len(losses), step=valid_epoch_interval), val_losses, color='g', label='valid')
+        except Exception as e:
+            print(f"Error plotting validation losses: {e}")
     plt.tight_layout()
     plt.title('Losses')
     plt.legend()
