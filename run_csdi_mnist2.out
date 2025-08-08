@@ -1,0 +1,124 @@
+ERROR: Unable to locate a modulefile for 'miniconda'
+Namespace(config='base32.yaml', device='cuda:0', seed=250, testmissingratio=-1.0, nfold=0, target_dim=2, eval_length=1, model_name='MNIST', unconditional=False, modelfolder='', nsample=1, ntrajs=1, nepochs=100, batch_size=128, lr=0.0001, scaling_flag=True, q=0.9, load=False, rob_flag=False, active_flag=False, implicit_flag=True, map_type='MNIST', gamma=0.0)
+False
+False
+{
+    "train": {
+        "epochs": 100,
+        "batch_size": 128,
+        "lr": 0.0001
+    },
+    "diffusion": {
+        "layers": 4,
+        "channels": 128,
+        "nheads": 8,
+        "diffusion_embedding_dim": 2,
+        "beta_start": 0.0001,
+        "beta_end": 0.5,
+        "num_steps": 32,
+        "schedule": "quad",
+        "input_dim": 2,
+        "traj_len": 1,
+        "gamma": 0.0
+    },
+    "model": {
+        "is_unconditional": false,
+        "timeemb": 256,
+        "featureemb": 64,
+        "target_strategy": "test",
+        "test_missing_ratio": -1.0
+    }
+}
+model folder: ./save/MNIST/DIFF/ID_UNC424/
+target dim is:  2
+model folder: ./save/VAE/VAE_36/
+Epoca: 1/20 	 Loss: 1321
+Epoca: 2/20 	 Loss: 1181
+Epoca: 3/20 	 Loss: 1168
+Epoca: 4/20 	 Loss: 1022
+Epoca: 5/20 	 Loss: 1139
+Epoca: 6/20 	 Loss: 1187
+Epoca: 7/20 	 Loss: 1127
+Epoca: 8/20 	 Loss: 1074
+Epoca: 9/20 	 Loss: 984
+Epoca: 10/20 	 Loss: 1146
+Epoca: 11/20 	 Loss: 1116
+Epoca: 12/20 	 Loss: 1028
+Epoca: 13/20 	 Loss: 1180
+Epoca: 14/20 	 Loss: 1235
+Epoca: 15/20 	 Loss: 1129
+Epoca: 16/20 	 Loss: 971
+Epoca: 17/20 	 Loss: 1105
+Epoca: 18/20 	 Loss: 1114
+Epoca: 19/20 	 Loss: 1056
+Epoca: 20/20 	 Loss: 1154
+Training classifier on VAE latent representations...
+Epoch [1/30] - Loss: 1133.9034 - Accuracy: 60.48%
+Epoch [2/30] - Loss: 849.9463 - Accuracy: 69.31%
+Epoch [3/30] - Loss: 806.9649 - Accuracy: 70.18%
+Epoch [4/30] - Loss: 792.0753 - Accuracy: 70.20%
+Epoch [5/30] - Loss: 779.3209 - Accuracy: 70.69%
+Epoch [6/30] - Loss: 774.3175 - Accuracy: 70.66%
+Epoch [7/30] - Loss: 768.0731 - Accuracy: 70.92%
+Epoch [8/30] - Loss: 763.0510 - Accuracy: 71.05%
+Epoch [9/30] - Loss: 760.1516 - Accuracy: 70.96%
+Epoch [10/30] - Loss: 760.1397 - Accuracy: 70.78%
+Epoch [11/30] - Loss: 753.8818 - Accuracy: 71.13%
+Epoch [12/30] - Loss: 754.9408 - Accuracy: 70.92%
+Epoch [13/30] - Loss: 751.7834 - Accuracy: 71.21%
+Epoch [14/30] - Loss: 749.5390 - Accuracy: 71.27%
+Epoch [15/30] - Loss: 748.0677 - Accuracy: 70.99%
+Epoch [16/30] - Loss: 745.4874 - Accuracy: 71.30%
+Epoch [17/30] - Loss: 745.3945 - Accuracy: 71.27%
+Epoch [18/30] - Loss: 743.5730 - Accuracy: 71.25%
+Epoch [19/30] - Loss: 745.0179 - Accuracy: 71.16%
+Epoch [20/30] - Loss: 745.1389 - Accuracy: 71.33%
+Epoch [21/30] - Loss: 741.7073 - Accuracy: 71.32%
+Epoch [22/30] - Loss: 742.9980 - Accuracy: 71.24%
+Epoch [23/30] - Loss: 740.8510 - Accuracy: 71.25%
+Epoch [24/30] - Loss: 737.0253 - Accuracy: 71.36%
+Epoch [25/30] - Loss: 738.5369 - Accuracy: 71.39%
+Epoch [26/30] - Loss: 737.9383 - Accuracy: 71.25%
+Epoch [27/30] - Loss: 737.8952 - Accuracy: 71.56%
+Epoch [28/30] - Loss: 736.9552 - Accuracy: 71.47%
+Epoch [29/30] - Loss: 735.0923 - Accuracy: 71.54%
+Epoch [30/30] - Loss: 736.1984 - Accuracy: 71.71%
+Final Test Accuracy: 71.31%
+
+✨ Best validation loss updated to 8436.4719 at epoch 5
+
+✨ Best validation loss updated to 8399.7704 at epoch 10
+
+✨ Best validation loss updated to 8382.5559 at epoch 35
+
+✨ Best validation loss updated to 8328.8949 at epoch 45
+
+✨ Best validation loss updated to 8211.4149 at epoch 50
+
+✨ Best validation loss updated to 8042.6853 at epoch 55
+
+✨ Best validation loss updated to 8000.3961 at epoch 65
+
+✨ Best validation loss updated to 7987.3430 at epoch 70
+
+✨ Best validation loss updated to 7973.4097 at epoch 85
+
+✨ Best validation loss updated to 7971.9655 at epoch 100
+Training time:  1681.9721403121948
+evaluation using the implicit version of the forward process for model
+Evaluation using the implicit version of the model over the test dataset...
+Plotting images...
+samples len is:  157
+target len is:  157
+samples shape is:  torch.Size([64, 1, 1, 2])
+target shape is:  torch.Size([64, 1, 2])
+N is: 157
+M is: 64
+Plotting images...
+samples len is:  157
+target len is:  157
+samples shape is:  torch.Size([64, 1, 1, 2])
+target shape is:  torch.Size([64, 1, 2])
+N is: 157
+M is: 64
+process terminated for model: 424

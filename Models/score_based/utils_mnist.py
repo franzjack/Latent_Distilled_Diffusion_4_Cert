@@ -142,6 +142,102 @@ def train(
         torch.save(model.diffmodel.state_dict(), output_path2)
 
 
+
+def train_mnist(
+    model,
+    config,
+    train_loader,
+    autoencoder=None,
+    valid_loader=None,
+    valid_epoch_interval=5,
+    foldername="",
+):
+
+    if foldername != "":
+        output_path1 = foldername + "fullmodel.pth"
+        output_path2 = foldername + "diffmodel.pth"
+
+    optimizer = Adam(model.parameters(), lr=config["lr"], weight_decay=1e-6)
+
+    # Multi-step learning rate decay
+    p5 = int(0.5 * config["epochs"])
+    p7 = int(0.7 * config["epochs"])
+    p9 = int(0.9 * config["epochs"])
+    lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        optimizer, milestones=[p5, p7, p9], gamma=0.1
+    )
+
+    losses = []
+    val_losses = []
+    best_valid_loss = float("inf")
+
+    for epoch_no in range(config["epochs"]):
+        avg_loss = 0.0
+        model.train()
+        autoencoder.encoder.eval()  # Move outside batch loop
+
+        with tqdm(train_loader, desc=f"Epoch {epoch_no+1}/{config['epochs']}",
+                  leave=True, dynamic_ncols=True, mininterval=0.5) as it:
+
+            for batch_no, (x, _) in enumerate(it, start=1):
+                x = x.to(model.device)
+
+                # Encode input
+                xx = autoencoder.encoder(x)
+                xx = xx.unsqueeze(-1)
+
+                # Forward + backward
+                optimizer.zero_grad()
+                loss = model(xx)
+                loss.backward()
+                optimizer.step()
+
+                avg_loss += loss.item()
+                it.set_postfix(loss=loss.item(), avg_loss=avg_loss / batch_no)
+
+        lr_scheduler.step()
+        losses.append(avg_loss)
+
+        # Validation phase
+        if valid_loader is not None and (epoch_no + 1) % valid_epoch_interval == 0:
+            model.eval()
+            autoencoder.encoder.eval()
+            avg_loss_valid = 0.0
+
+            with torch.no_grad(), tqdm(valid_loader, desc=f"Validation {epoch_no+1}",
+                                       leave=True, dynamic_ncols=True, mininterval=0.5) as val_it:
+                for val_batch_no, (x, _) in enumerate(val_it, start=1):
+                    x = x.to(model.device)
+
+                    xx = autoencoder.encoder(x).unsqueeze(-1)
+                    loss = model(xx, is_train=0)
+                    avg_loss_valid += loss.item()
+
+                    val_it.set_postfix(val_loss=loss.item(),
+                                       avg_val_loss=avg_loss_valid / val_batch_no)
+
+            if best_valid_loss > avg_loss_valid:
+                best_valid_loss = avg_loss_valid
+                print(f"\n✨ Best validation loss updated to {avg_loss_valid:.4f} at epoch {epoch_no+1}")
+
+            val_losses.append(avg_loss_valid)
+
+    # Plotting training and validation losses
+    plt.plot(np.arange(len(losses)), losses, color='b', label='train')
+    if valid_loader is not None:
+        plt.plot(np.arange(start=0, stop=len(losses), step=valid_epoch_interval), val_losses, color='g', label='valid')
+    plt.tight_layout()
+    plt.title('Losses')
+    plt.legend()
+    plt.savefig(foldername + 'losses.png')
+    plt.close()
+
+    # Save models
+    if foldername != "":
+        torch.save(model.state_dict(), output_path1)
+        torch.save(model.diffmodel.state_dict(), output_path2)
+
+
 def quantile_loss(target, forecast, q: float, eval_points) -> float:
     return 2 * torch.sum(
         torch.abs((forecast - target) * eval_points * ((target <= forecast) * 1.0 - q))
@@ -367,6 +463,73 @@ def new_evaluate_implicit(model, test_loader, autoencoder=None, nsample=100, sca
                 f,
             )
 
+def new_evaluate_implicit_mnist(model, test_loader, autoencoder=None, nsample=100, scaler=1, mean_scaler=0, foldername="", ds_id='test'):
+    print(f"Evaluation using the implicit version of the model over the {ds_id} dataset...")
+
+    with torch.no_grad():
+        model.eval()
+        autoencoder.encoder.eval()
+
+        mse_total = 0.0
+        mae_total = 0.0
+
+        all_target = []
+        all_generated_samples = []
+
+        with tqdm(test_loader, desc=f"Evaluating {ds_id}", dynamic_ncols=True, mininterval=0.5, leave=True) as it:
+            for batch_no, (x, _) in enumerate(it, start=1):
+                x = x.to(model.device)
+
+                xx = autoencoder.encoder(x)
+                xx = xx.unsqueeze(-1)
+
+                output = model.evaluate_implicit(xx, nsample)
+                samples, c_target, latent = output
+
+                # Optional debug prints
+                # print('samples shape:', samples.shape)
+                # print('c_target shape:', c_target.shape)
+                # print('latent shape:', latent.shape)
+
+                samples = samples.permute(0, 1, 3, 2)  # (B, nsample, L, K)
+                c_target = c_target.permute(0, 2, 1)    # (B, L, K)
+
+                samples_median = samples.median(dim=1)  # (B, L, K)
+                all_target.append(c_target)
+                all_generated_samples.append(samples)
+
+                mse_current = ((samples.squeeze(1) - c_target) ** 2) * (scaler ** 2)
+                mae_current = torch.abs(samples.squeeze(1) - c_target) * scaler
+
+                mse_total += mse_current.sum().item()
+                mae_total += mae_current.sum().item()
+
+                it.set_postfix(mse=mse_current.mean().item(), mae=mae_current.mean().item())
+
+        # Save reshaped outputs
+        with open(f"{foldername}generated_{ds_id}_reshaped_outputs_nsample{nsample}.pk", "wb") as f:
+            pickle.dump([all_generated_samples, all_target], f)
+
+        # Save latent samples
+        with open(f"{foldername}sampled_{ds_id}_latent_nsample{nsample}.pk", "wb") as f:
+            pickle.dump([latent], f)
+
+        # Save final outputs (concatenated)
+        with open(f"{foldername}generated_{ds_id}_outputs_nsample{nsample}.pk", "wb") as f:
+            all_target = torch.cat(all_target, dim=0)
+            all_generated_samples = torch.cat(all_generated_samples, dim=0)
+
+            pickle.dump(
+                [
+                    all_generated_samples,
+                    all_target,
+                    scaler,
+                    mean_scaler,
+                ],
+                f,
+            )
+
+
 def stud_evaluate_implicit(model, test_loader, nsample=100, scaler=1, mean_scaler=0, foldername="", ds_id = 'test',latent=None):
     print('Evaluation using the implicit version of the model over the '+ds_id+' dataset..')
     with torch.no_grad():
@@ -468,95 +631,9 @@ def stud_evaluate_implicit(model, test_loader, nsample=100, scaler=1, mean_scale
 
             
 
-           # with open(
-            #    foldername + ds_id+"_result_nsample" + str(nsample) + ".pk", "wb"
-            #) as f:
-             #   pickle.dump(
-              #      [
-               #         np.sqrt(mse_total / evalpoints_total),
-                #        mae_total / evalpoints_total,
-                        
-                 #   ],
-                  #  f,
-                #)
-                #print("RMSE:", np.sqrt(mse_total / evalpoints_total))
-                #print("MAE:", mae_total / evalpoints_total)
+
                                 
                 
-                                
-
-'''
-def statistical_test(opt, model, dataloader, nsample=1, scaler=1, mean_scaler=0, foldername=""):
-    plt.rcParams.update({'font.size': 22})
-
-    print("Statistical test...") 
-    
-    path = foldername+'generated_test_reshaped_outputs_nsample' + str(nsample) + '.pk' 
-    with open(path, 'rb') as f:
-        samples, target = pickle.load(f)
-
-
-    N = len(samples) #nb points
-    M = samples[0].shape[0] #nb trajs per point
-    K = samples[0].shape[-1] #feature
-    L = samples[0].shape[-2] #time length
-    
-    samples_grid = [5,10, 25, 50, 100, 200, 300]
-    G = len(samples_grid)
-
-    filename = foldername+f'CSDI_{opt.model_name}_pvalues.pickle'
-        
-    if False:
-        pvals_mean = np.empty((K,G))
-        pvals_std = np.empty((K,G))
-        for jj in range(G):
-
-            pvals = torch.empty((N, K, L))
-            
-            for i in range(N):
-                Ti = target[i]#.cpu().numpy()
-                Si = samples[i]#.cpu().numpy()
-                for m in range(K):
-                    for t in range(L):    
-                        A = Ti[:samples_grid[jj],t,m].unsqueeze(1)
-                        B = Si[:samples_grid[jj],0,t,m].unsqueeze(1)
-                        st = torch_two_sample.statistics_diff.EnergyStatistic(samples_grid[jj], samples_grid[jj])
-                        stat, dist = st(A,B, ret_matrix = True)
-                        pvals[i,m,t] = st.pval(dist)
-
-            pvals_mean[:,jj] = np.mean(np.mean(pvals.cpu().numpy(), axis=0),axis=1)
-            pvals_std[:,jj] = np.std(np.std(pvals.cpu().numpy(), axis=0),axis=1)
-    
-        pvalues_dict = {"samples_grid":samples_grid, "pvals_mean":pvals_mean, "pvals_std":pvals_std}
-        
-        file = open(filename, 'wb')
-        pickle.dump(pvalues_dict, file)
-        file.close()
-    else:
-        with open(filename, 'rb') as f:
-            pvalues_dict = pickle.load(f)
-        pvals_mean, pvals_std = pvalues_dict["pvals_mean"], pvalues_dict["pvals_std"]
-
-    colors = ['b','r','g']
-    fig = plt.figure()
-    for spec in range(K):
-        plt.plot(np.array(samples_grid), pvals_mean[spec], color =colors[spec],label=opt.species_labels[spec])
-        plt.fill_between(np.array(samples_grid), pvals_mean[spec]-1.96*pvals_std[spec],
-                                    pvals_mean[spec]+1.96*pvals_std[spec], color =colors[spec],alpha =0.1)
-    plt.plot(np.array(samples_grid), np.ones(G)*0.05,'k--') 
-    plt.legend()
-    plt.title(f'csdi: {opt.model_name}')
-    #plt.xticks(samples_grid)
-    plt.grid()
-
-    plt.xlabel("nb of samples")
-    plt.ylabel("p-values")
-    plt.tight_layout()
-    figname = foldername+f"CSDI_{opt.model_name}_statistical_test.png"
-    fig.savefig(figname)
-    plt.close()
-'''
-
 def compute_wass_distance(opt, model, dataloader, nsample=1, scaler=1, mean_scaler=0, foldername=""):
     plt.rcParams.update({'font.size': 22})
 
@@ -948,4 +1025,220 @@ def plot_rescaled_3dline(opt, foldername, dataloader, nsample, idx = 'test'):
         #plt.legend()
         plt.tight_layout()
         fig.savefig(foldername+f'CSDI_{opt.model_name}_3dmap_{idx}_{dataind}.png')
+        plt.close()
+
+
+
+
+def train_student_mnist(
+    teacher_model,
+    student_model,
+    config,
+    train_loader,
+    autoencoder=None,
+    valid_loader=None,
+    valid_epoch_interval=4,
+    foldername="",
+):
+    optimizer = torch.optim.Adam(student_model.parameters(), lr=config["lr"], weight_decay=1e-6)
+
+    p5 = int(0.5 * config["epochs"])
+    p7 = int(0.7 * config["epochs"])
+    p9 = int(0.9 * config["epochs"])
+
+    lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        optimizer, milestones=[p5, p7, p9], gamma=0.1
+    )
+
+    losses = []
+    val_losses = []
+
+    teacher_model.eval()
+    best_valid_loss = 1e10
+    student_model.train()
+    autoencoder.encoder.eval()
+    for epoch_no in range(config["epochs"]):
+        avg_loss = 0
+        
+
+        with tqdm(train_loader, desc=f"Epoch {epoch_no+1}", dynamic_ncols=True, mininterval=0.5) as it:
+            for batch_no, (x, _) in enumerate(it, start=1):
+                x = x.to(student_model.device)
+
+                # === VAE ENCODING ===
+                z = autoencoder.encoder(x)
+                z = z.unsqueeze(-1)  # Add temporal dimension for diffusion
+
+                optimizer.zero_grad()
+                observed_data = z
+                loss = student_model.my_distill_loss2(teacher_model, observed_data)
+
+                avg_loss += loss.item()
+                loss.backward()
+                optimizer.step()
+
+                it.set_postfix({
+                    "avg_epoch_loss": avg_loss / batch_no,
+                    "lr": optimizer.param_groups[0]["lr"]
+                }, refresh=True)
+
+        lr_scheduler.step()
+        losses.append(avg_loss / batch_no)
+
+        # Validation
+        if valid_loader is not None and (epoch_no + 1) % valid_epoch_interval == 0:
+            student_model.eval()
+            avg_loss_valid = 0
+
+            with torch.no_grad(), tqdm(valid_loader, desc=f"Validation {epoch_no+1}", dynamic_ncols=True, mininterval=0.5) as it:
+                for batch_no, (x, _) in enumerate(it, start=1):
+                    x = x.to(student_model.device)
+
+                    # === VAE ENCODING ===
+                    autoencoder.encoder.eval()
+                    z = autoencoder.encoder(x)
+                    z = z.unsqueeze(-1)
+
+                    observed_data = z
+                    loss = student_model.my_distill_loss2(teacher_model, observed_data)
+                    avg_loss_valid += loss.item()
+
+                    it.set_postfix({
+                        "valid_avg_epoch_loss": avg_loss_valid / batch_no
+                    }, refresh=True)
+
+            if best_valid_loss > avg_loss_valid:
+                best_valid_loss = avg_loss_valid
+                print(f"\n✨ Best valid loss updated to {avg_loss_valid / batch_no:.4f} at epoch {epoch_no+1}")
+
+            val_losses.append(avg_loss_valid / batch_no)
+
+        # Optional: save periodically
+        if (epoch_no + 1) % 500 == 0 and foldername:
+            temp_path = foldername + f"{epoch_no}_epoch_model.pth"
+            try:
+                torch.save(student_model.state_dict(), temp_path)
+            except Exception as e:
+                print(f"Failed saving model at epoch {epoch_no}: {e}")
+
+    if foldername:
+        output_path = foldername + "student_fullmodel.pth"
+        torch.save(student_model.state_dict(), output_path)
+
+    # Plotting losses
+    plt.plot(np.arange(len(losses)), losses, color='b', label='train')
+    if valid_loader is not None and val_losses:
+        plt.plot(np.arange(start=0, stop=len(losses), step=valid_epoch_interval), val_losses, color='g', label='valid')
+    plt.tight_layout()
+    plt.title('Losses')
+    plt.legend()
+    plt.savefig(foldername + 'student_losses.png')
+    plt.close()
+
+
+
+
+def stud_and_teach_eval_mnist(model_s, model_t, test_loader, nsample, scaler=1, mean_scaler=0, foldername="", ds_id='test', dist_step=0):
+    print(f'Evaluation using student and teacher over the {ds_id} dataset...')
+    
+    with torch.no_grad():
+        model_s.eval()
+        model_t.eval()
+        
+        mse_total_s = 0
+        mae_total_s = 0
+        mse_total_t = 0
+        mae_total_t = 0
+
+        all_target = []
+        all_generated_samples_s = []
+        all_generated_samples_t = []
+
+        with tqdm(test_loader, desc="Evaluating", dynamic_ncols=True, mininterval=0.5) as it:
+            for batch_no, (x, _) in enumerate(it, start=1):
+                x = x.to(model_s.device)
+
+                latent = torch.randn_like(x)  # Assuming latent is a random tensor for evaluation
+                samples_s, c_target = model_s.evaluate_from_latent(x, latent)
+                samples_t, _ = model_t.evaluate_from_latent(x, latent)
+
+                samples_s = samples_s.permute(0, 1, 3, 2)
+                samples_t = samples_t.permute(0, 1, 3, 2)
+                c_target = c_target.permute(0, 2, 1)
+
+                all_target.append(c_target)
+                all_generated_samples_s.append(samples_s)
+                all_generated_samples_t.append(samples_t)
+
+                mse_current_s = ((samples_s.squeeze(1) - c_target) ** 2) * (scaler ** 2)
+                mae_current_s = torch.abs(samples_s.squeeze(1) - c_target) * scaler
+
+                mse_current_t = ((samples_t.squeeze(1) - c_target) ** 2) * (scaler ** 2)
+                mae_current_t = torch.abs(samples_t.squeeze(1) - c_target) * scaler
+
+                mse_total_s += mse_current_s.sum().item()
+                mae_total_s += mae_current_s.sum().item()
+
+                mse_total_t += mse_current_t.sum().item()
+                mae_total_t += mae_current_t.sum().item()
+
+                it.set_postfix({
+                    "rmse_s": np.sqrt(mse_total_s),
+                    "mae_s": mae_total_s,
+                    "rmse_t": np.sqrt(mse_total_t),
+                    "mae_t": mae_total_t
+                }, refresh=True)
+
+        # Save reshaped samples
+        with open(f"{foldername}generated_{ds_id}_step{dist_step}_reshaped_outputs_nsample_distill{nsample}.pk", "wb") as f:
+            pickle.dump([all_generated_samples_s, all_generated_samples_t, all_target], f)
+
+        # Save final samples (flattened)
+        with open(f"{foldername}generated_{ds_id}_step{dist_step}_outputs_nsample_distill{nsample}.pk", "wb") as f:
+            pickle.dump([
+                torch.cat(all_generated_samples_s, dim=0),
+                torch.cat(all_generated_samples_t, dim=0),
+                torch.cat(all_target, dim=0),
+                scaler,
+                mean_scaler,
+            ], f)
+
+
+def plot_compared_results(opt, foldername, autoencoder, nsample, idx='test', dist_step=0):
+    plt.rcParams.update({'font.size': 25})
+    print('Plotting student vs teacher reconstructions...')
+
+    path = os.path.join(foldername, f'generated_{idx}_step{dist_step}_reshaped_outputs_nsample_distill{nsample}.pk')
+    with open(path, 'rb') as f:
+        samples_s, samples_t, _ = pickle.load(f)
+
+    print(f'student samples len: {len(samples_s)}')
+    print(f'teacher samples len: {len(samples_t)}')
+
+    print('student sample shape:', samples_s[0].shape)
+    print('teacher sample shape:', samples_t[0].shape)
+
+    samples_s = samples_s[0].squeeze(1).squeeze(-1)  # (M, latent_dim)
+    samples_t = samples_t[0].squeeze(1).squeeze(-1)  # (M, latent_dim)
+
+    M = samples_s.shape[0]
+    print('Number of comparisons:', M)
+
+    for dataind in range(M):
+        decoded_stud = autoencoder.decoder(samples_s[dataind])
+        decoded_teach = autoencoder.decoder(samples_t[dataind])
+
+        # Make image grids
+        grid_s = make_grid(decoded_stud).permute(1, 2, 0).cpu().detach().numpy()
+        grid_t = make_grid(decoded_teach).permute(1, 2, 0).cpu().detach().numpy()
+
+        # Combine vertically (student on top, teacher below)
+        combined = np.concatenate((grid_s, grid_t), axis=0)
+
+        plt.figure(figsize=(grid_s.shape[1] / 10, 5))
+        plt.imshow(combined)
+        plt.axis('off')
+        plt.tight_layout()
+        save_path = os.path.join(foldername, f'CSDI_{opt.model_name}_step{dist_step}_student_vs_teacher_{idx}_{dataind}.png')
+        plt.savefig(save_path, bbox_inches='tight')
         plt.close()

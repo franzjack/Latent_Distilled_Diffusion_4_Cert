@@ -9,27 +9,28 @@ from torchvision.utils import make_grid
 
 
 def get_mnist_dataloader(root, batch_size=64):
+    transform = torchvision.transforms.ToTensor()
 
-    train_dataloader =  DataLoader(
-    torchvision.datasets.MNIST(
-        './data/',
-        transform=torchvision.transforms.ToTensor(),
-        train=True,
-        download=True
-    ),
-    batch_size=128,
-    shuffle=True
-    )      
-    test_dataloader =  DataLoader(
-    torchvision.datasets.MNIST(
-        './data/',
-        transform=torchvision.transforms.ToTensor(),
-        train=False,
-        download=True
-    ),
-    batch_size=128,
-    shuffle=True
-    ) 
+    train_dataloader = DataLoader(
+        torchvision.datasets.MNIST(
+            root,
+            transform=transform,
+            train=True,
+            download=True
+        ),
+        batch_size=batch_size,
+        shuffle=True
+    )
 
-    
+    test_dataloader = DataLoader(
+        torchvision.datasets.MNIST(
+            root,
+            transform=transform,
+            train=False,
+            download=True
+        ),
+        batch_size=batch_size,
+        shuffle=False  
+    )
+
     return train_dataloader, test_dataloader

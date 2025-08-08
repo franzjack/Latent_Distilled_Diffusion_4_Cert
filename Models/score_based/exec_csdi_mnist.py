@@ -21,7 +21,7 @@ import numpy as np
 device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 import torch
 from torch import nn
-from vae import Autoencoder, Decoder, ae_train, generate_images_grid
+from vae import VariationalAutoencoder, Decoder, vae_train, LatentClassifier, evaluate_latent_classifier, train_latent_classifier
 from mnist_data import get_mnist_dataloader
 
 
@@ -108,34 +108,36 @@ else:
 print('target dim is: ',args.target_dim)
 
 
-ae_foldername = f"./save/AE/AE_10/"
+ae_foldername = ""
 
 ae_latent_dims: int = 2
 train_data, test_data = get_mnist_dataloader(root='./data/', batch_size=64)
 
-vae: nn.Module = Autoencoder(ae_latent_dims).to(device)
+vae: nn.Module = VariationalAutoencoder(ae_latent_dims).to(device)
 
 
 
 # Check if the autoencoder model exists, if not, train it
 if ae_foldername == "":
     aefolder = str(np.random.randint(0,500))
-    ae_foldername = f"./save/AE/AE_{aefolder}/"
+    ae_foldername = f"./save/VAE/VAE_{aefolder}/"
     print('model folder:', ae_foldername)
     os.makedirs(ae_foldername, exist_ok=True)
 
     vae.train()
-    vae: nn.Module = ae_train(vae, train_data, epochs = 20, foldername=ae_foldername)
+    vae: nn.Module = vae_train(vae, train_data, epochs = 20, foldername=ae_foldername)
     vae.eval()
 
 else:
-    vae.load_state_dict(torch.load(ae_foldername + "ae_model.pth"))
-    print('Autoencoder loaded from:', ae_foldername + "ae_model.pth")
+    vae.load_state_dict(torch.load(ae_foldername + "vae_model.pth"))
+    print('Autoencoder loaded from:', ae_foldername + "vae_model.pth")
 
 
 
 
-
+classifier = train_latent_classifier(vae, train_data, test_data, epochs=30, foldername=ae_foldername)
+# Evaluate classifier
+evaluate_latent_classifier(vae, classifier, test_data)
 
 
 args = get_model_details(args)
@@ -145,7 +147,7 @@ model = absCSDI(config, args.device,target_dim=args.target_dim).to(args.device)
 
 if not args.load:
         st = time.time()
-        train(
+        train_mnist(
             model,
             config["train"],
             train_loader = train_data,
@@ -161,7 +163,7 @@ else:
 # Evaluate over the test set
 if args.implicit_flag:
     print('evaluation using the implicit version of the forward process for model')
-    new_evaluate_implicit(model, test_data, autoencoder=vae, nsample=args.nsample, scaler=1, foldername=foldername, ds_id = 'test')
+    new_evaluate_implicit_mnist(model, test_data, autoencoder=vae, nsample=args.nsample, scaler=1, foldername=foldername, ds_id = 'test')
 else:
     evaluate(model, test_data, nsample=args.nsample, scaler=1, foldername=foldername, ds_id = 'test')
 
