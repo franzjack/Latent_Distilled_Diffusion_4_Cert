@@ -1141,7 +1141,7 @@ def train_student_mnist(
 
 
 
-def stud_and_teach_eval_mnist(model_s, model_t, test_loader, nsample, scaler=1, mean_scaler=0, foldername="", ds_id='test', dist_step=0):
+def stud_and_teach_eval_mnist(model_s, model_t, test_loader, nsample, scaler=1, autoencoder=None, mean_scaler=0, foldername="", ds_id='test', dist_step=0):
     print(f'Evaluation using student and teacher over the {ds_id} dataset...')
     
     with torch.no_grad():
@@ -1160,10 +1160,14 @@ def stud_and_teach_eval_mnist(model_s, model_t, test_loader, nsample, scaler=1, 
         with tqdm(test_loader, desc="Evaluating", dynamic_ncols=True, mininterval=0.5) as it:
             for batch_no, (x, _) in enumerate(it, start=1):
                 x = x.to(model_s.device)
-
-                latent = torch.randn_like(x)  # Assuming latent is a random tensor for evaluation
-                samples_s, c_target = model_s.evaluate_from_latent(x, latent)
-                samples_t, _ = model_t.evaluate_from_latent(x, latent)
+                xx = autoencoder.encoder(x)
+                xx = xx.unsqueeze(-1)
+                print('xx shape is: ', xx.shape)
+                #latent = torch.randn_like(xx)  # Assuming latent is a random tensor for evaluation
+                latent = model_s.latent_builder(xx, nsample)
+                #print('latent shape is', latent.shape)
+                samples_s, c_target = model_s.evaluate_from_latent(xx, latent)
+                samples_t, _ = model_t.evaluate_from_latent(xx, latent)
 
                 samples_s = samples_s.permute(0, 1, 3, 2)
                 samples_t = samples_t.permute(0, 1, 3, 2)

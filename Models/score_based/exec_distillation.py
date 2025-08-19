@@ -58,7 +58,7 @@ TRAIN = True
 SINGLE = False
 FIRST_STEP = True
 COMPARED = True
-next_dist_step = False
+next_dist_step = 0
 
 #parser.add_argument("--diffsteps", type=int, default=20)
 #parser.add_argument("--difflayers", type=int, default=6)

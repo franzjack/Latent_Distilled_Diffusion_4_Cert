@@ -3,51 +3,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 
-# Conv2D-based spatiotemporal block
-class SpatiotemporalConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=(2, 3), padding=(1, 1)):
+
+# Minimal 1D Conv Block (pointwise only)
+class Conv1DPointwise(nn.Module):
+    def __init__(self, in_channels, out_channels):
         super().__init__()
-        # Conv2D expects input shape [B, C, H, W]
-        self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size, padding=padding)
-        self.norm = nn.GroupNorm(4, out_channels)
+        self.conv = nn.Conv1d(in_channels, out_channels, kernel_size=1)
+        self.norm = nn.BatchNorm1d(out_channels)
         self.act = nn.SiLU()
 
-    def forward(self, x):
-        # x shape: [B, C, T]
-        B, C, T = x.shape
-        x_2d = x.view(B, C, 1, T)  # [B, C, 1, T] (H=1, W=T)
-        x_2d = self.conv2d(x_2d)  # [B, out_channels, H, W] = [B, out_channels, 2, T]
-        x_2d = self.norm(x_2d)
-        x_2d = self.act(x_2d)
-        x_flat = x_2d.view(B, -1, x_2d.shape[-1])  # [B, out_channels * H, W=T]
-        return x_flat
-
-
-# class DiffusionEmbedding(nn.Module):
-#     def __init__(self, num_steps, dim=128):
-#         super().__init__()
-#         self.dim = dim
-#         self.register_buffer("embedding", self._build_embedding(num_steps, dim), persistent=False)
-#         self.proj1 = nn.Linear(dim, dim)
-#         self.proj2 = nn.Linear(dim, dim)
-
-#     def _build_embedding(self, num_steps, dim):
-#         steps = torch.arange(num_steps).unsqueeze(1).float()
-#         freqs = torch.exp(torch.arange(0, dim, 2).float() * (-math.log(10000.0) / dim))
-#         args = steps * freqs
-#         emb = torch.zeros((num_steps, dim))
-#         emb[:, 0::2] = torch.sin(args)
-#         emb[:, 1::2] = torch.cos(args)
-#         return emb
-
-#     def forward(self, diffusion_step):
-#         x = self.embedding[diffusion_step]  # (B, dim)
-#         x = self.proj1(x)
-#         x = F.silu(x)
-#         x = self.proj2(x)
-#         x = F.silu(x)
-#         return x
-
+    def forward(self, x):  # [B, C, T]
+        return self.act(self.norm(self.conv(x)))
 
 
 class DiffusionEmbedding(nn.Module):
@@ -57,14 +23,14 @@ class DiffusionEmbedding(nn.Module):
             projection_dim = embedding_dim
         self.register_buffer(
             "embedding",
-            self._build_embedding(num_steps, embedding_dim ),
+            self._build_embedding(num_steps, embedding_dim),
             persistent=False,
         )
         self.projection1 = nn.Linear(embedding_dim, embedding_dim)
         self.projection2 = nn.Linear(embedding_dim, projection_dim)
 
-    def forward(self, diffusion_step):
-        x = self.embedding[diffusion_step]
+    def forward(self, diffusion_step):  # diffusion_step: [B]
+        x = self.embedding[diffusion_step]  # [B, dim]
         x = self.projection1(x)
         x = F.silu(x)
         x = self.projection2(x)
@@ -75,61 +41,58 @@ class DiffusionEmbedding(nn.Module):
         steps = torch.arange(num_steps).unsqueeze(1)  # (T,1)
         frequencies = 10.0 ** (torch.arange(dim) / (dim - 1) * 4.0).unsqueeze(0)  # (1,dim)
         table = steps * frequencies  # (T,dim)
-        table = torch.sin(table)  # (T,dim)
-        return table
+        return torch.sin(table)  # (T,dim)
 
 
 class ResidualBlock(nn.Module):
-    def __init__(self, channels, diffusion_dim, traj_dim):
+    def __init__(self, channels, diffusion_dim):
         super().__init__()
         self.diff_proj = nn.Linear(diffusion_dim, channels)
-        self.conv1 = nn.Linear(channels, 2 * channels)
-        self.norm1 = nn.GroupNorm(4, 2 * channels)
-        self.conv2d_block = SpatiotemporalConvBlock(channels, channels)
+        self.conv1 = nn.Conv1d(channels, 2 * channels, kernel_size=1)
+        self.norm1 = nn.BatchNorm1d(2 * channels)
+        self.conv2 = Conv1DPointwise(channels, channels)
 
     def forward(self, x, diffusion_emb):
         # x: [B, C, T]
         B, C, T = x.shape
         d_emb = self.diff_proj(diffusion_emb).unsqueeze(-1).to(x.device)  # [B, C, 1]
-        
-        y = x + d_emb  # [B, C, T]
 
+        y = x + d_emb
         y = self.conv1(y)  # [B, 2*C, T]
         y = self.norm1(y)
         y = F.silu(y)
 
-        gate = y[:, :C, :]
-        filter_ = y[:, C:, :]
+        # Gating mechanism
+        gate, filter_ = y[:, :C, :], y[:, C:, :]
         y = torch.sigmoid(gate) * torch.tanh(filter_)
 
-        y = self.conv2d_block(y)  # [B, C * 2, T] since conv2d outputs [B, C_out*H, T]
-
-
-        y = y[:, :C, :]  # Retain only original number of channels if needed
-
+        y = self.conv2(y)  # [B, C, T]
         return (x + y) / math.sqrt(2), y
 
 
 class diff_CSDI(nn.Module):
-    def __init__(self, config, inputdim, traj_len):
+    def __init__(self, config, inputdim=2, traj_len=1):
         super().__init__()
-        self.K = inputdim
-        self.L = traj_len
+        self.K = inputdim  # latent dim = 2
+        self.L = traj_len  # treat as "sequence length"
         self.channels = config["channels"]
 
-        self.diff_emb = DiffusionEmbedding(config["num_steps"], config["diffusion_embedding_dim"])
+        self.diff_emb = DiffusionEmbedding(
+            config["num_steps"], config["diffusion_embedding_dim"]
+        )
 
-        self.input_proj = nn.Linear(self.K, self.channels)
-        self.output_proj1 = nn.Linear(self.channels, self.channels)
-        self.output_proj2 = nn.Linear(self.channels, self.K)
+        # Projection in/out (1x1 conv acts like Linear)
+        self.input_proj = nn.Conv1d(self.K, self.channels, kernel_size=1)
+        self.output_proj1 = nn.Conv1d(self.channels, self.channels, kernel_size=1)
+        self.output_proj2 = nn.Conv1d(self.channels, self.K, kernel_size=1)
 
         self.res_layers = nn.ModuleList([
-            ResidualBlock(self.channels, config["diffusion_embedding_dim"], self.channels)
+            ResidualBlock(self.channels, config["diffusion_embedding_dim"])
             for _ in range(config["layers"])
         ])
 
     def forward(self, x, diffusion_step):
-        # x: [B, K, T]
+        # x: [B, K=2, T]
         x = self.input_proj(x)  # [B, channels, T]
         x = F.silu(x)
 
@@ -141,7 +104,7 @@ class diff_CSDI(nn.Module):
             skip_sum = skip_sum + skip
 
         x = skip_sum / math.sqrt(len(self.res_layers))  # [B, channels, T]
-        x = self.output_proj1(x)  # [B, channels, T]
+        x = self.output_proj1(x)
         x = F.silu(x)
-        x = self.output_proj2(x)  # [B, K, T]
+        x = self.output_proj2(x)  # back to [B, 2, T]
         return x

@@ -14,7 +14,7 @@ module load miniconda  # or module load miniconda
 conda activate cert  # or conda activate scoreenv if your cluster supports it directly
 
 # Navigate to the directory with your script
-cd /u/f_giacomarra/repos/Certified_Generation_4_Planning
+cd /u/f_giacomarra/repos/Latent_Distilled_Diffusion_4_Cert
 
 
 

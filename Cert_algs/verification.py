@@ -474,6 +474,36 @@ def verifier_heterog_increment2(bmodel, qmodel,weight = 0.1, M=1, epsilon = 0.00
   return B_list
 
 
+def verifier_vanilla(model, M=1, eps_start = 0.001, latent_shape = np.empty((1,50)), model_id=''):
+
+  norm = np.inf
+  
+  Zstar = torch.randn_like(latent_shape, device = device)
+  
+  print('z pivot = ', Zstar)
+
+
+  print("vanilla test started")
+    
+  epsilon = eps_start
+  bounded_model = BoundedModule(bmodel, torch.zeros_like(Zstar), bound_opts={"conv_mode": "tensor",'sparse_intermediate_bounds': False,
+          'sparse_conv_intermediate_bounds': False,'sparse_intermediate_bounds_with_ibp': False},verbose=True)
+  bounded_model.eval()
+
+  eps = epsilon
+  norm = norm
+  ptb = PerturbationLpNorm(norm = norm, eps = eps)
+  # Input tensor is wrapped in a BoundedTensor object.
+  bounded_traj_z = BoundedTensor(Zstar, ptb)
+  print('Model prediction:', bounded_model(bounded_traj_z))
+
+  print('Bounding method: backward (CROWN, DeepPoly)')
+  with torch.no_grad():  # If gradients of the bounds are not needed, we can use no_grad to save memory.
+    lb_bstl, ub_bstl = bounded_model.compute_bounds(x=(bounded_traj_z), method='backward')
+
+  print(f'lb = {lb_bstl}, ub = {ub_bstl}')
+  return (Zstar, epsilon, lb_bstl, ub_bstl)
+
 
 from scipy.stats import truncnorm
 

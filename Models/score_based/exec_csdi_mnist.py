@@ -116,6 +116,10 @@ train_data, test_data = get_mnist_dataloader(root='./data/', batch_size=64)
 vae: nn.Module = VariationalAutoencoder(ae_latent_dims).to(device)
 
 
+aefolder = 36
+
+ae_foldername = "./save/VAE/VAE_36/"
+
 
 # Check if the autoencoder model exists, if not, train it
 if ae_foldername == "":
@@ -135,9 +139,9 @@ else:
 
 
 
-classifier = train_latent_classifier(vae, train_data, test_data, epochs=30, foldername=ae_foldername)
+#classifier = train_latent_classifier(vae, train_data, test_data, epochs=30, foldername=ae_foldername)
 # Evaluate classifier
-evaluate_latent_classifier(vae, classifier, test_data)
+#evaluate_latent_classifier(vae, classifier, test_data)
 
 
 args = get_model_details(args)

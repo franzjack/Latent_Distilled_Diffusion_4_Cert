@@ -43,7 +43,7 @@ parser.add_argument("--model_name", type=str, default="MNIST")
 parser.add_argument("--unconditional", default=False)#, action="store_true"
 parser.add_argument("--teacher_folder", type=str, default="")
 parser.add_argument("--student_folder", type=str, default="")
-parser.add_argument("--modelfolder", type=str, default="424")
+parser.add_argument("--modelfolder", type=str, default="465")
 parser.add_argument("--nsample", type=int, default=1)
 parser.add_argument("--ntrajs", type=int, default=1)
 parser.add_argument("--nepochs", type=int, default=5000)
@@ -213,9 +213,9 @@ if COMPARED == True:
     print(student_model.num_steps)
     print('evaluation using the implicit version of the forward process for model')
 
-    stud_and_teach_eval_mnist(student_model, original_model, test_data, nsample=args.nsample, scaler=1, foldername=student_folder, ds_id = 'test',dist_step = 0)
+    stud_and_teach_eval_mnist(student_model, original_model, test_data, nsample=args.nsample, autoencoder=vae, scaler=1, foldername=student_folder, ds_id = 'test',dist_step = 0)
 
-    plot_compared_results(opt=args, foldername=student_folder, dataloader=train_data, nsample=args.nsample, dist_step = 0)
+    plot_compared_results(opt=args, foldername=student_folder, autoencoder=vae, nsample=args.nsample, dist_step = 0)
 
 
 # except:

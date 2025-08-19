@@ -27,7 +27,7 @@ from boolean_stl import *
 import stl
 from verification import *
 
-from Models.score_based.main_x import Generator, diff_CSDI, absCSDI
+from Models.score_based.new_main import Generator, diff_CSDI, absCSDI
 
 # if torch.cuda.is_available() else False
 cuda=False
@@ -38,7 +38,7 @@ print('exec device = ', device)
 Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 
 
-case_path = os.path.join(parent_dir,"Cert_algs","Cases","diff","obs.yaml")
+case_path = os.path.join(parent_dir,"Cert_algs","Cases","diff","half_cross.yaml")
 
 with open(case_path, "r") as f:
     case_data = yaml.safe_load(f)
@@ -88,7 +88,7 @@ class CondGenerator(nn.Module):
 
     def forward(self, noise):
 
-        signal = self.generator(noise).to(device)
+        signal = self.generator(self.data, noise).to(device)
         rescaled_signal = self.mins + (signal+1)*(self.maxs-self.mins)/2
         
         #rescaled_signal = ((signal.permute(0,2,1)+1)*self.maxs/2).permute(0,2,1)
@@ -103,44 +103,23 @@ CondGenerator_w_QuantSTL = getattr(cm, 'condGen_w_QuantSTL_'+dataname)
 print('traj_len is ', traj_len)
 
 
-FIRST_STEP = True
-num_steps = 6
-next_dist_step = 0
-
-
 #conf_path = os.path.join(os.path.abspath(''),"Models/score_based/config/base.yaml")
-conf_path = os.path.join(parent_dir,"Models","score_based","config","base48.yaml")
+conf_path = os.path.join(parent_dir,"Models","score_based","config","base.yaml")
 
 with open(conf_path, "r") as f:
     config = yaml.safe_load(f)
 
 
-config["train"]["batch_size"] = 128
+config["train"]["batch_size"] = 64
 config["model"]["test_missing_ratio"] = -1
 config["model"]["is_unconditional"] = False
 config["diffusion"]["input_dim"] = xdim
 config["diffusion"]["traj_len"] = traj_len
-config["diffusion"]["num_steps"] = 6
 
 ## NOTA : fix for test dimensions
 
-config_teacher = copy.deepcopy(config)
-config_student = copy.deepcopy(config)
 
-original_folder = f"./save/OBS/DIFF/ID_UNC72/"
-
-if FIRST_STEP == True:
-    teacher_folder = original_folder
-    config_student["diffusion"]["num_steps"] = int(config_teacher["diffusion"]["num_steps"]/2)
-    print('student num_steps:', config_student["diffusion"]["num_steps"])
-    next_dist_step = 0
-else:
-    teacher_folder = f"./save/OBS/DIFF/ID_UNC72/distill_{str(num_steps*2)}/"
-    config_teacher["diffusion"]["num_steps"] = int(config_teacher["diffusion"]["num_steps"]/(2**next_dist_step))
-    config_student["diffusion"]["num_steps"] = int(config_teacher["diffusion"]["num_steps"]/2)
-    print('student num_steps:', config_student["diffusion"]["num_steps"])
-
-config_student["diffusion"]["schedule"] = "student"
+model_diff = absCSDI(config, device ,target_dim=xdim).to(device)
 
 #mod_path = os.path.join(os.path.abspath(''), 'save', modelname, arch, gen_id, 'fullmodel.pth')
 mod_path = os.path.join(parent_dir, 'save', modelname, arch, gen_id, 'fullmodel.pth')
@@ -161,7 +140,7 @@ obs_data = obs_data.unsqueeze(0)
 
 print('obs_data shape is: ', obs_data.shape)
 
-latent_shape = obs_data
+latent_shape = obs_data[:,:,1:]
 
 cmodel = CondGenerator(model, obs_data)
 cmodel.eval()
@@ -180,7 +159,7 @@ WEIGHT = 0.4
 CERTIFICATION = True
 GEN_TRAJ = True
 GUIDANCE = False
-VANILLA_SAT = True
+VANILLA_SAT = False
 #for the generation purposes
 ex_id = 'test'
 
@@ -192,10 +171,10 @@ if HOM:
 else:
     cert_type = 'HET'
 
-hom_results_path = os.path.join(parent_dir, 'Cert_algs',"results","DIFF",dataname,cert_type, "diff_x_"+dataname+"_Hom_results.pkl")
-het_results_path = os.path.join(parent_dir, 'Cert_algs',"results","DIFF",dataname,cert_type, "diff_x_"+dataname+"_Het_results.pkl")
-hom_list_path = os.path.join(parent_dir, 'Cert_algs',"results","DIFF",dataname,cert_type, "diff_x_"+dataname+"_Hom_list.pkl")
-het_list_path = os.path.join(parent_dir, 'Cert_algs',"results","DIFF",dataname,cert_type, "diff_x_"+dataname+"_Het_list.pkl")
+hom_results_path = os.path.join(parent_dir, 'Cert_algs',"results","DIFF",dataname,cert_type, "diff_small_eps_"+dataname+"_Hom_results.pkl")
+het_results_path = os.path.join(parent_dir, 'Cert_algs',"results","DIFF",dataname,cert_type, "diff_small_eps_"+dataname+"_Het_results.pkl")
+hom_list_path = os.path.join(parent_dir, 'Cert_algs',"results","DIFF",dataname,cert_type, "diff_small_eps_"+dataname+"_Hom_list.pkl")
+het_list_path = os.path.join(parent_dir, 'Cert_algs',"results","DIFF",dataname,cert_type, "diff_small_eps_"+dataname+"_Het_list.pkl")
 
 if CERTIFICATION:
     
@@ -203,6 +182,7 @@ if CERTIFICATION:
     if HOM:
         print('-------- HOMEGENEOUS INCREMENTS----------')
         #ball_list = verifier(bmodel, qmodel, M=10, epsilon = 0.1, latent_dim = latent_dim)
+        output = verifier_vanilla(bmodel, M=M_MAX, eps_start = EPS, latent_shape = latent_shape, model_id = dataname)
         hom_ball_list = verifier_increment2(bmodel, qmodel, M=M_MAX, eps_start = EPS, delta_eps = DELTA_EPS, latent_shape = latent_shape,model_id = dataname)
         hom_balls = {"hom_ball_list": hom_ball_list}
         with open(hom_list_path, "wb") as f:

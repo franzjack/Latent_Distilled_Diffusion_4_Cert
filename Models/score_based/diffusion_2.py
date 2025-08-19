@@ -4,24 +4,21 @@ import torch.nn.functional as F
 import math
 
 
-# Con based diffusion model
 # Conv1D-based spatiotemporal block
-
-
 class SpatiotemporalConv1D(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
         hidden_channels = 128  # You can adjust this based on your needs
         self.conv1 = nn.Conv1d(in_channels, hidden_channels, kernel_size=3, padding=1)
         self.act1 = nn.SiLU()
-        self.norm1 = nn.GroupNorm(4, hidden_channels)
+        self.norm1 = nn.BatchNorm1d(hidden_channels)
 
-        self.conv2 = nn.Conv1d(hidden_channels, hidden_channels*2, kernel_size=5, padding=2)
+        self.conv2 = nn.Conv1d(hidden_channels, hidden_channels * 2, kernel_size=5, padding=2)
         self.act2 = nn.SiLU()
-        self.norm2 = nn.GroupNorm(4, hidden_channels*2)
+        self.norm2 = nn.BatchNorm1d(hidden_channels * 2)
 
-        self.conv3 = nn.Conv1d(hidden_channels*2, out_channels, kernel_size=3, padding=1)
-        self.norm3 = nn.GroupNorm(4, out_channels)
+        self.conv3 = nn.Conv1d(hidden_channels * 2, out_channels, kernel_size=3, padding=1)
+        self.norm3 = nn.BatchNorm1d(out_channels)
 
     def forward(self, x):  # x: [B, C, T]
         x = self.conv1(x)
@@ -37,8 +34,6 @@ class SpatiotemporalConv1D(nn.Module):
         return x
 
 
-
-
 class DiffusionEmbedding(nn.Module):
     def __init__(self, num_steps, embedding_dim=128, projection_dim=None):
         super().__init__()
@@ -46,7 +41,7 @@ class DiffusionEmbedding(nn.Module):
             projection_dim = embedding_dim
         self.register_buffer(
             "embedding",
-            self._build_embedding(num_steps, embedding_dim ),
+            self._build_embedding(num_steps, embedding_dim),
             persistent=False,
         )
         self.projection1 = nn.Linear(embedding_dim, embedding_dim)
@@ -73,7 +68,7 @@ class ResidualBlock(nn.Module):
         super().__init__()
         self.diff_proj = nn.Linear(diffusion_dim, channels)
         self.conv1 = nn.Conv1d(channels, 2 * channels, kernel_size=3, padding=1)
-        self.norm1 = nn.GroupNorm(4, 2 * channels)
+        self.norm1 = nn.BatchNorm1d(2 * channels)
         self.conv2d_block = SpatiotemporalConv1D(channels, channels)
 
     def forward(self, x, diffusion_emb):
@@ -91,7 +86,7 @@ class ResidualBlock(nn.Module):
         filter_ = y[:, C:, :]
         y = torch.sigmoid(gate) * torch.tanh(filter_)
 
-        y = self.conv2d_block(y)  # [B, C * 2, T] since conv2d outputs [B, C_out*H, T]
+        y = self.conv2d_block(y)  # [B, C, T]
 
         return (x + y) / math.sqrt(2), y
 

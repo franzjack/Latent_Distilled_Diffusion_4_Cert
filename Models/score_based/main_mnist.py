@@ -432,6 +432,8 @@ class CSDI_base(nn.Module):
 
         #print('alpha teacher', teacher_model.alpha_torch[t_teacher])
         noisy_data = (teacher_model.alpha_torch[t_teacher] ** 0.5) * observed_data + ((1.0 - teacher_model.alpha_torch[t_teacher]) ** 0.5) * noise
+        print('noisy data shape is: ', noisy_data.shape)
+        print('noisy data is: ', noisy_data[0])
         self.train() 
         with torch.no_grad():
             # Teacher prediction
@@ -645,7 +647,7 @@ class Generator(nn.Module):
         self.csdi = csdi
 
 
-  def forward(self, observed_data,noisy_obs):
+  def forward(self,noisy_obs):
 
 
     return self.csdi.single_impute_implicit(noisy_obs)
