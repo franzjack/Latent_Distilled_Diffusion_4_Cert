@@ -8,7 +8,7 @@ import math
 class SpatiotemporalConv1D(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
-        hidden_channels = 128  # You can adjust this based on your needs
+        hidden_channels = 32  # You can adjust this based on your needs
         self.conv1 = nn.Conv1d(in_channels, hidden_channels, kernel_size=3, padding=1)
         self.act1 = nn.SiLU()
         self.norm1 = nn.BatchNorm1d(hidden_channels)
@@ -55,7 +55,7 @@ class DiffusionEmbedding(nn.Module):
         x = F.silu(x)
         return x
 
-    def _build_embedding(self, num_steps, dim=128):
+    def _build_embedding(self, num_steps, dim=64):
         steps = torch.arange(num_steps).unsqueeze(1)  # (T,1)
         frequencies = 10.0 ** (torch.arange(dim) / (dim - 1) * 4.0).unsqueeze(0)  # (1,dim)
         table = steps * frequencies  # (T,dim)

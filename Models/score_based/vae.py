@@ -43,6 +43,19 @@ class Decoder(nn.Module):
         z: torch.Tensor = z.reshape((-1, 1, 28, 28))
         return z
     
+class FlatDecoder(nn.Module):
+    def __init__(self, latent_dims: int) -> None:
+        super().__init__()
+        self.linear1 = nn.Linear(latent_dims, 512)
+        self.linear2 = nn.Linear(512, 784)
+
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
+        z: torch.Tensor = self.linear1(z)
+        z: torch.Tensor = F.relu(z)
+        z: torch.Tensor = self.linear2(z)
+        z: torch.Tensor = torch.sigmoid(z)
+        return z
+    
 
 class VariationalEncoder(nn.Module):
     def __init__(self, latent_dims: int) -> None:
@@ -52,8 +65,8 @@ class VariationalEncoder(nn.Module):
         self.linear3 = nn.Linear(512, latent_dims)
 
         self.N = torch.distributions.Normal(0, 1)
-        self.N.loc = self.N.loc.to(device)
-        self.N.scale = self.N.scale.to(device)
+        self.register_buffer("N_loc", torch.tensor(0.0))
+        self.register_buffer("N_scale", torch.tensor(1.0))
         self.kl = 0
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -62,7 +75,8 @@ class VariationalEncoder(nn.Module):
         x: torch.Tensor = F.relu(x)
         mu: torch.Tensor =  self.linear2(x)
         sigma: torch.Tensor = torch.exp(self.linear3(x))
-        z: torch.Tensor = mu + sigma*self.N.sample(mu.shape)
+        eps = torch.distributions.Normal(self.N_loc, self.N_scale).sample(mu.shape)
+        z = mu + sigma * eps
         self.kl = (sigma**2 + mu**2 - torch.log(sigma) - 1/2).sum()
         return z
 
@@ -89,6 +103,17 @@ class VariationalAutoencoder(nn.Module):
         xx: torch.Tensor = self.decoder(z)
         return xx
     
+class FlatVariationalAutoencoder(nn.Module):
+    def __init__(self, latent_dims: int) -> None:
+        super().__init__()
+        self.encoder: nn.Module = VariationalEncoder(latent_dims)
+        self.decoder: nn.Module = FlatDecoder(latent_dims)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        z: torch.Tensor = self.encoder(x)
+        xx: torch.Tensor = self.decoder(z)
+        return xx
+    
 
 def vae_train(autoencoder: nn.Module, data: DataLoader, epochs: int = 20, foldername: str = "") -> nn.Module    :
     tmp_loss: float = 0.0
@@ -100,6 +125,25 @@ def vae_train(autoencoder: nn.Module, data: DataLoader, epochs: int = 20, folder
             x_hat: torch.Tensor = autoencoder(x)
             loss: torch.Tensor = ((x - x_hat)**2).sum() + autoencoder.encoder.kl
             tmp_loss: torch.Tensor = ((x - x_hat)**2).sum()
+            loss.backward()
+            opt.step()
+        print(f"Epoca: {(epoch+1)}/{epochs} \t Loss: {tmp_loss:.0f}")
+    if foldername != "":
+        output_path = foldername + "vae_model.pth"
+        torch.save(autoencoder.state_dict(), output_path)
+    return autoencoder
+
+def fvae_train(autoencoder: nn.Module, data: DataLoader, epochs: int = 20, foldername: str = "") -> nn.Module    :
+    tmp_loss: float = 0.0
+    opt: torch.optim.Optimizer = torch.optim.Adam(autoencoder.parameters())
+    for epoch in trange(epochs):
+        for x, _ in data:
+            x: torch.Tensor = x.to(device)
+            xf = torch.flatten(x, start_dim=1)
+            opt.zero_grad()
+            x_hat: torch.Tensor = autoencoder(x)
+            loss: torch.Tensor = ((xf - x_hat)**2).sum() + autoencoder.encoder.kl
+            tmp_loss: torch.Tensor = ((xf - x_hat)**2).sum()
             loss.backward()
             opt.step()
         print(f"Epoca: {(epoch+1)}/{epochs} \t Loss: {tmp_loss:.0f}")

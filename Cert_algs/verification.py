@@ -474,19 +474,20 @@ def verifier_heterog_increment2(bmodel, qmodel,weight = 0.1, M=1, epsilon = 0.00
   return B_list
 
 
-def verifier_vanilla(model, M=1, eps_start = 0.001, latent_shape = np.empty((1,50)), model_id=''):
+def verifier_vanilla(model,Zstar, M=1, eps_start = 0.001, device = device, model_id=''):
 
   norm = np.inf
   
-  Zstar = torch.randn_like(latent_shape, device = device)
   
   print('z pivot = ', Zstar)
 
 
   print("vanilla test started")
+
+  print('Original model prediction:', model(Zstar))
     
   epsilon = eps_start
-  bounded_model = BoundedModule(bmodel, torch.zeros_like(Zstar), bound_opts={"conv_mode": "tensor",'sparse_intermediate_bounds': False,
+  bounded_model = BoundedModule(model, torch.zeros_like(Zstar), bound_opts={"conv_mode": "tensor",'sparse_intermediate_bounds': False,
           'sparse_conv_intermediate_bounds': False,'sparse_intermediate_bounds_with_ibp': False},verbose=True)
   bounded_model.eval()
 

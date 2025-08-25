@@ -14,33 +14,33 @@ parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 superdir = os.path.dirname(parent_dir)
 #import torch_two_sample 
+#from main_mnist import absCSDI
 from main_mnist import absCSDI
-
 from utils_mnist import *
 import numpy as np
 device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 import torch
 from torch import nn
-from vae import VariationalAutoencoder, Decoder, vae_train, LatentClassifier, evaluate_latent_classifier, train_latent_classifier
+from vae import FlatVariationalAutoencoder, FlatDecoder, fvae_train, LatentClassifier, evaluate_latent_classifier, train_latent_classifier
 from mnist_data import get_mnist_dataloader
 
 
 parser = argparse.ArgumentParser(description="CSDI")
 parser.add_argument("--config", type=str, default="base.yaml")
-parser.add_argument('--device', default='cuda:0', help='Device for Attack')
+parser.add_argument('--device', default='cuda:0', help='Device')
 parser.add_argument("--seed", type=int, default=1)
 parser.add_argument("--testmissingratio", type=float, default=-1.0)
 parser.add_argument(
     "--nfold", type=int, default=0, help="for 5fold test (valid value:[0-4])"
 )
 parser.add_argument("--target_dim", type=int, default=2)
-parser.add_argument("--eval_length", type=int, default=1)
+parser.add_argument("--eval_length", type=int, default=2)
 parser.add_argument("--model_name", type=str, default="MNIST")
 parser.add_argument("--unconditional", default=False)#, action="store_true"
 parser.add_argument("--modelfolder", type=str, default="")
 parser.add_argument("--nsample", type=int, default=1)
 parser.add_argument("--ntrajs", type=int, default=1)
-parser.add_argument("--nepochs", type=int, default=200)
+parser.add_argument("--nepochs", type=int, default=100)
 parser.add_argument("--batch_size", type=int, default=128)
 parser.add_argument("--lr", type=float, default=0.0001)
 parser.add_argument("--scaling_flag", type=eval, default=True)
@@ -113,23 +113,23 @@ ae_foldername = ""
 ae_latent_dims: int = 2
 train_data, test_data = get_mnist_dataloader(root='./data/', batch_size=64)
 
-vae: nn.Module = VariationalAutoencoder(ae_latent_dims).to(device)
+vae: nn.Module = FlatVariationalAutoencoder(ae_latent_dims).to(device)
 
 
-aefolder = 36
+#aefolder = 401
 
-ae_foldername = "./save/VAE/VAE_36/"
+#ae_foldername = "./save/VAE/VAE_401/"
 
 
 # Check if the autoencoder model exists, if not, train it
 if ae_foldername == "":
     aefolder = str(np.random.randint(0,500))
-    ae_foldername = f"./save/VAE/VAE_{aefolder}/"
+    ae_foldername = f"./save/fVAE/fVAE_{aefolder}/"
     print('model folder:', ae_foldername)
     os.makedirs(ae_foldername, exist_ok=True)
 
     vae.train()
-    vae: nn.Module = vae_train(vae, train_data, epochs = 20, foldername=ae_foldername)
+    vae: nn.Module = fvae_train(vae, train_data, epochs = 20, foldername=ae_foldername)
     vae.eval()
 
 else:
@@ -177,12 +177,12 @@ else:
 
 #plot_rescaled_trajectories(opt=args, foldername=foldername, dataloader=test_loader, nsample=args.nsample, Mred=10)
 try:
-    plot_results(opt=args, foldername=foldername, autoencoder=vae, nsample=args.nsample)
+    plot_flat_results(opt=args, foldername=foldername, autoencoder=vae, nsample=args.nsample)
 except:
     print('Error in plotting results, probably due to the shape of the data')
     pass
 
-plot_results(opt=args, foldername=foldername, autoencoder=vae, nsample=args.nsample)
+plot_flat_results(opt=args, foldername=foldername, autoencoder=vae, nsample=args.nsample)
 
 #plot_rescaled_3dline(opt=args, foldername=foldername, dataloader=train_loader, nsample=args.nsample)
 

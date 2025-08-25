@@ -530,6 +530,7 @@ def new_evaluate_implicit_mnist(model, test_loader, autoencoder=None, nsample=10
             )
 
 
+
 def stud_evaluate_implicit(model, test_loader, nsample=100, scaler=1, mean_scaler=0, foldername="", ds_id = 'test',latent=None):
     print('Evaluation using the implicit version of the model over the '+ds_id+' dataset..')
     with torch.no_grad():
@@ -854,6 +855,121 @@ def plot_results(opt, foldername, autoencoder, nsample, idx = 'test'):
         save_path = foldername + f'CSDI_mnist_comparison_{dataind}.png'
         plt.savefig(save_path, bbox_inches='tight')
         plt.close()
+
+
+def plot_results(opt, foldername, autoencoder, nsample, idx = 'test'):
+    plt.rcParams.update({'font.size': 25})
+
+    print('Plotting images...')
+    path = foldername+'generated_'+idx+'_reshaped_outputs_nsample' + str(nsample) + '.pk' 
+    with open(path, 'rb') as f:
+        samples, target = pickle.load(f)
+
+    print('samples len is: ', len(samples))
+    print('target len is: ', len(target))    
+
+    print('samples shape is: ', samples[0].shape)
+    print('target shape is: ', target[0].shape)
+    
+
+    N = len(samples) #nb points
+
+    M = samples[0].shape[0] #nb trajs per point
+    print('N is:', N)
+    print('M is:', M)
+
+    samples = samples[0].squeeze(1)
+
+    samples = samples.squeeze(-1)
+    target = target[0].squeeze(-1)
+
+
+
+    
+    
+        
+    
+    for dataind in range(M):
+        fig = plt.figure()
+        x = autoencoder.decoder(samples[dataind])
+        x2 = autoencoder.decoder(target[dataind])
+
+
+
+        grid1 = make_grid(x).permute(1, 2, 0).cpu().detach().numpy()
+        grid2 = make_grid(x2).permute(1, 2, 0).cpu().detach().numpy()
+
+        # Concatenate vertically (axis=0) or horizontally (axis=1)
+        combined = np.concatenate((grid1, grid2), axis=0)  # vertical comparison
+        # combined = np.concatenate((grid1, grid2), axis=1)  # horizontal comparison
+
+        # Plot and save
+        plt.figure(figsize=(x.shape[0], 4))
+        plt.imshow(combined)
+        plt.axis('off')
+        plt.tight_layout()
+        save_path = foldername + f'CSDI_mnist_comparison_{dataind}.png'
+        plt.savefig(save_path, bbox_inches='tight')
+        plt.close()        
+
+
+
+def plot_flat_results(opt, foldername, autoencoder, nsample, idx = 'test'):
+    plt.rcParams.update({'font.size': 25})
+
+    print('Plotting images...')
+    path = foldername+'generated_'+idx+'_reshaped_outputs_nsample' + str(nsample) + '.pk' 
+    with open(path, 'rb') as f:
+        samples, target = pickle.load(f)
+
+    print('samples len is: ', len(samples))
+    print('target len is: ', len(target))    
+
+    print('samples shape is: ', samples[0].shape)
+    print('target shape is: ', target[0].shape)
+    
+
+    N = len(samples) #nb points
+
+    M = samples[0].shape[0] #nb trajs per point
+    print('N is:', N)
+    print('M is:', M)
+
+    samples = samples[0].squeeze(1)
+
+    samples = samples.squeeze(-1)
+    target = target[0].squeeze(-1)
+
+
+
+    
+    
+        
+    
+    for dataind in range(M):
+        fig = plt.figure()
+        x = autoencoder.decoder(samples[dataind])
+        x2 = autoencoder.decoder(target[dataind])
+
+        x = x.reshape(-1,1,28,28)
+        x2 = x2.reshape(-1,1,28,28)
+
+
+        grid1 = make_grid(x).permute(1, 2, 0).cpu().detach().numpy()
+        grid2 = make_grid(x2).permute(1, 2, 0).cpu().detach().numpy()
+
+        # Concatenate vertically (axis=0) or horizontally (axis=1)
+        combined = np.concatenate((grid1, grid2), axis=0)  # vertical comparison
+        # combined = np.concatenate((grid1, grid2), axis=1)  # horizontal comparison
+
+        # Plot and save
+        plt.figure(figsize=(x.shape[0], 4))
+        plt.imshow(combined)
+        plt.axis('off')
+        plt.tight_layout()
+        save_path = foldername + f'CSDI_mnist_comparison_{dataind}.png'
+        plt.savefig(save_path, bbox_inches='tight')
+        plt.close()        
 
 def plot_rescaled_many_trajs(opt, foldername, dataloader, nsample, idx = 'test'):
     plt.rcParams.update({'font.size': 25})

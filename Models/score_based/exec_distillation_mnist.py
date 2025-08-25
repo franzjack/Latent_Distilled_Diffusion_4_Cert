@@ -29,8 +29,8 @@ from mnist_data import get_mnist_dataloader
 
 
 parser = argparse.ArgumentParser(description="CSDI")
-parser.add_argument("--config", type=str, default="base12.yaml")
-parser.add_argument('--device', default='cuda:0', help='Device for Attack')
+parser.add_argument("--config", type=str, default="base.yaml")
+parser.add_argument('--device', default='cuda:0', help='Device')
 parser.add_argument("--seed", type=int, default=1)
 parser.add_argument("--model_seed", type=str, default=str(1))
 parser.add_argument("--testmissingratio", type=float, default=-1.0)
@@ -43,10 +43,10 @@ parser.add_argument("--model_name", type=str, default="MNIST")
 parser.add_argument("--unconditional", default=False)#, action="store_true"
 parser.add_argument("--teacher_folder", type=str, default="")
 parser.add_argument("--student_folder", type=str, default="")
-parser.add_argument("--modelfolder", type=str, default="465")
+parser.add_argument("--modelfolder", type=str, default="75")
 parser.add_argument("--nsample", type=int, default=1)
 parser.add_argument("--ntrajs", type=int, default=1)
-parser.add_argument("--nepochs", type=int, default=5000)
+parser.add_argument("--nepochs", type=int, default=185)
 parser.add_argument("--batch_size", type=int, default=128)
 parser.add_argument("--lr", type=float, default=0.0005)
 parser.add_argument("--scaling_flag", type=eval, default=True)
@@ -56,7 +56,7 @@ parser.add_argument("--rob_flag", type=eval, default=False)
 parser.add_argument("--active_flag", type=eval, default=False)
 parser.add_argument("--implicit_flag",type=eval, default=True)
 parser.add_argument("--map_type", type=str, default = "MNIST")
-parser.add_argument("--gamma", type=float, default=0.0)
+parser.add_argument("--gamma", type=float, default=0.3)
 
 TRAIN = True
 SINGLE = False
@@ -99,9 +99,9 @@ print(config["model"]["is_unconditional"])
 config_teacher = copy.deepcopy(config)
 config_student = copy.deepcopy(config)
 
-aefolder = 36
+aefolder = 401
 
-ae_foldername = "./save/VAE/VAE_36/"
+ae_foldername = "./save/VAE/VAE_401/"
 
 ae_latent_dims: int = 2
 train_data, test_data = get_mnist_dataloader(root='./data/', batch_size=64)
@@ -134,9 +134,10 @@ if FIRST_STEP == True:
     print('student num_steps:', config_student["diffusion"]["num_steps"])
     next_dist_step = 0
 else:
-    teacher_folder = f"./save/{args.model_name}/DIFF/ID_UNC{args.modelfolder}/distill_{args.teacher_folder}/"
-    config_teacher["diffusion"]["num_steps"] = int(config_teacher["diffusion"]["num_steps"]/(2**next_dist_step))
-    config_student["diffusion"]["num_steps"] = int(config_teacher["diffusion"]["num_steps"]/2)
+    t_step = int(config_teacher["diffusion"]["num_steps"]/(2**next_dist_step))
+    teacher_folder = f"./save/{args.model_name}/DIFF/ID_UNC{args.modelfolder}/distill_{str(t_step)}/"
+    config_teacher["diffusion"]["num_steps"] = t_step
+    config_student["diffusion"]["num_steps"] = int(t_step/2)
     print('student num_steps:', config_student["diffusion"]["num_steps"])
 
 config_student["diffusion"]["schedule"] = "student"
@@ -174,7 +175,7 @@ print(json.dumps(config_student, indent=4))
 student_model = absCSDI(config_student, args.device,target_dim=args.target_dim, teacher_model= teacher_model).to(args.device)
 
 if args.student_folder == "":
-    student_folder = f"./save/{args.model_name}/DIFF/ID_UNC{args.modelfolder}/distill_{args.model_seed}/"
+    student_folder = f"./save/{args.model_name}/DIFF/ID_UNC{args.modelfolder}/distill_{str(config_student["diffusion"]["num_steps"])}/"
 else:
     student_folder = f"./save/{args.model_name}/DIFF/ID_UNC{args.modelfolder}/distill_{args.student_folder}/"
 print('model folder:', student_folder)

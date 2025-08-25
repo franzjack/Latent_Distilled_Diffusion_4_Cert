@@ -14,7 +14,7 @@ current_dir = os.path.dirname(os.path.realpath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 #from score_based.new_diffusion import diff_CSDI
-from score_based.diffusion_2 import diff_CSDI
+from score_based.diffusion_test import diff_CSDI
 from tqdm import tqdm
 
 
@@ -50,55 +50,71 @@ class CSDI_base(nn.Module):
         # parameters for diffusion models
         self.num_steps = config_diff["num_steps"]
         if config_diff["schedule"] == "quad":
-            self.beta = torch.linspace(
+            beta = torch.linspace(
                 config_diff["beta_start"] ** 0.5, config_diff["beta_end"] ** 0.5, self.num_steps
             ) ** 2
-            self.alpha_hat = 1 - self.beta
-            self.alpha = torch.cumprod(self.alpha_hat,dim=0).to(self.device)
+            alpha_hat = 1 - beta
+            alpha = torch.cumprod(alpha_hat,dim=0).to(self.device)
             #self.alpha_torch = torch.tensor(self.alpha).float().to(self.device).unsqueeze(1).unsqueeze(1)
-            self.alpha_torch = self.alpha.float().unsqueeze(1).unsqueeze(1)
+            alpha_torch = alpha.float().unsqueeze(1).unsqueeze(1)
+            self.register_buffer("alpha", alpha.float())
+            self.register_buffer("alpha_torch", alpha.float().unsqueeze(1).unsqueeze(1))
+            self.register_buffer("alpha_hat", alpha_hat.float())
+            self.register_buffer("beta", beta.float())
         elif config_diff["schedule"] == "linear":
-            self.beta = torch.linspace(
+            beta = torch.linspace(
                 config_diff["beta_start"], config_diff["beta_end"], self.num_steps
             ).to(self.device)
 
-            self.alpha_hat = 1 - self.beta
-            self.alpha = torch.cumprod(self.alpha_hat,dim=0).to(self.device)
+            alpha_hat = 1 - beta
+            alpha = torch.cumprod(alpha_hat,dim=0).to(self.device)
             #self.alpha_torch = torch.tensor(self.alpha).float().to(self.device).unsqueeze(1).unsqueeze(1)
-            self.alpha_torch = self.alpha.float().unsqueeze(1).unsqueeze(1)
+            alpha_torch = alpha.float().unsqueeze(1).unsqueeze(1)
+            self.register_buffer("alpha", alpha.float())
+            self.register_buffer("alpha_torch", alpha.float().unsqueeze(1).unsqueeze(1))
+            self.register_buffer("alpha_hat", alpha_hat.float())
+            self.register_buffer("beta", beta.float())
         
         elif config_diff["schedule"] == "student":
             if teacher_model is None:
                 raise ValueError("Teacher model must be provided for student schedule.")
             else:
-                self.alpha = teacher_model.alpha[::2]
-                self.alpha = self.alpha.to(self.device)
-                self.alpha_hat = torch.empty_like(self.alpha)
-                self.alpha_hat[0] = self.alpha[0]
-                self.alpha_hat[1:] = self.alpha[1:] / self.alpha[:-1]
-                self.alpha_hat = self.alpha_hat.to(self.device)
+                alpha = teacher_model.alpha[::2]
+                alpha = alpha.to(self.device)
+                alpha_hat = torch.empty_like(alpha)
+                alpha_hat[0] = alpha[0]
+                alpha_hat[1:] = alpha[1:] / alpha[:-1]
+                alpha_hat = alpha_hat.to(self.device)
 
                 # beta_student = 1 - alpha_hat_student
-                self.beta = (1 - self.alpha_hat).to(self.device)
+                beta = (1 - alpha_hat).to(self.device)
                 
 
                 # Volendo, puoi costruire anche la versione torch-friendly come prima
-                self.alpha_torch = self.alpha.float().unsqueeze(1).unsqueeze(1).to(self.device)
+                alpha_torch = alpha.float().unsqueeze(1).unsqueeze(1).to(self.device)
+                self.register_buffer("alpha", alpha.float())
+                self.register_buffer("alpha_torch", alpha.float().unsqueeze(1).unsqueeze(1))
+                self.register_buffer("alpha_hat", alpha_hat.float())
+                self.register_buffer("beta", beta.float())
         elif config_diff["schedule"] == "custom":
             if alphas is None:
                 raise ValueError("Teacher model must be provided for student schedule.")
             else:
-                self.alpha = alphas
-                self.alpha = self.alpha.to(self.device)
-                self.alpha_hat = torch.empty_like(self.alpha)
-                self.alpha_hat[0] = self.alpha[0]
-                self.alpha_hat[1:] = self.alpha[1:] / self.alpha[:-1]
-                self.alpha_hat = self.alpha_hat.to(self.device)
+                alpha = alphas
+                alpha = alpha.to(self.device)
+                alpha_hat = torch.empty_like(alpha)
+                alpha_hat[0] = alpha[0]
+                alpha_hat[1:] = alpha[1:] / alpha[:-1]
+                alpha_hat = alpha_hat.to(self.device)
 
                 # beta_student = 1 - alpha_hat_student
-                self.beta = (1 - self.alpha_hat).to(self.device)
+                beta = (1 - alpha_hat).to(self.device)
 
-                self.alpha_torch = self.alpha.float().unsqueeze(1).unsqueeze(1).to(self.device)
+                alpha_torch = alpha.float().unsqueeze(1).unsqueeze(1).to(self.device)
+                self.register_buffer("alpha", alpha.float())
+                self.register_buffer("alpha_torch", alpha.float().unsqueeze(1).unsqueeze(1))
+                self.register_buffer("alpha_hat", alpha_hat.float())
+                self.register_buffer("beta", beta.float())
 
         
 
@@ -232,24 +248,20 @@ class CSDI_base(nn.Module):
         return imputed_samples
 
     
-    def single_impute_implicit(self,latent_sample):
+    def single_impute_implicit(self,current_sample):
             
-        current_sample = copy(latent_sample)
+        current_sample = current_sample.to(self.device)
         for t in range(self.num_steps - 1, -1, -1):
-
-
-            
             #diff_input = torch.cat([c, current_sample], dim=2)
-            diff_input = current_sample
+            
             #print('current time is: ', t)
             #print('current value of impute is', current_sample[0])
             
             
-                
-            predicted = self.diffmodel(diff_input,t).to(self.device)
+            predicted = self.diffmodel(current_sample,t).to(self.device)
             #print('current prediction is: ', predicted[0])
         
-            current_sample = self.implicit_single_step(current_sample, predicted, t)
+            current_sample = self.implicit_single_step(current_sample, predicted, t).to(self.device)
 
         return current_sample
 
@@ -392,13 +404,13 @@ class CSDI_base(nn.Module):
         #print('t student', t_student[0])
         #print('teacher alphas', teacher_model.alpha_torch[t_teacher])
         #print('student alphas' , self.alpha_torch[t_student])
-        print('student_target', student_target[0])
+        #print('student_target', student_target[0])
         #print("e_student", e_student[0])
         #print('sum of noise', noise.sum())
         #print('sum of target', student_target.sum())
         #print('theoretical x teacher: ', x_teacher_theo[0])
         #print("noisy data input", noisy_data)
-        print("student x", x_student[0])
+        #print("student x", x_student[0])
         #print("teacher x", x_t_2[0])
 
 
@@ -432,8 +444,8 @@ class CSDI_base(nn.Module):
 
         #print('alpha teacher', teacher_model.alpha_torch[t_teacher])
         noisy_data = (teacher_model.alpha_torch[t_teacher] ** 0.5) * observed_data + ((1.0 - teacher_model.alpha_torch[t_teacher]) ** 0.5) * noise
-        print('noisy data shape is: ', noisy_data.shape)
-        print('noisy data is: ', noisy_data[0])
+        #print('noisy data shape is: ', noisy_data.shape)
+        #print('noisy data is: ', noisy_data[0])
         self.train() 
         with torch.no_grad():
             # Teacher prediction
@@ -467,13 +479,13 @@ class CSDI_base(nn.Module):
         #print('t student', t_student[0])
         #print('teacher alphas', teacher_model.alpha_torch[t_teacher])
         #print('student alphas' , self.alpha_torch[t_student])
-        print('student_target', student_target[0])
+        #print('student_target', student_target[0])
         #print("e_student", e_student[0])
         #print('sum of noise', noise.sum())
         #print('sum of target', student_target.sum())
         #print('theoretical x teacher: ', x_teacher_theo[0])
         #print("noisy data input", noisy_data)
-        print("student x", x_student[0])
+        #print("student x", x_student[0])
         #print("teacher x", x_t_2[0])
 
 
@@ -645,6 +657,7 @@ class Generator(nn.Module):
   def __init__(self, csdi):
         super(Generator, self).__init__()
         self.csdi = csdi
+        self.device = csdi.device
 
 
   def forward(self,noisy_obs):
