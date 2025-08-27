@@ -21,7 +21,7 @@ import numpy as np
 device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 import torch
 from torch import nn
-from vae import FlatVariationalAutoencoder, FlatDecoder, fvae_train, LatentClassifier, evaluate_latent_classifier, train_latent_classifier
+from vae import FlatVariationalAutoencoder, FlatDecoder, vae_train, LatentClassifier, evaluate_latent_classifier, train_latent_classifier
 from mnist_data import get_mnist_dataloader
 
 
@@ -129,14 +129,14 @@ if ae_foldername == "":
     os.makedirs(ae_foldername, exist_ok=True)
 
     vae.train()
-    vae: nn.Module = fvae_train(vae, train_data, epochs = 20, foldername=ae_foldername)
+    vae: nn.Module = vae_train(vae, train_data, epochs = 20, foldername=ae_foldername)
     vae.eval()
 
 else:
     vae.load_state_dict(torch.load(ae_foldername + "vae_model.pth"))
     print('Autoencoder loaded from:', ae_foldername + "vae_model.pth")
 
-
+print("decoded shape: ", vae.decoder(torch.randn(1, ae_latent_dims).to(device)).shape)
 
 
 #classifier = train_latent_classifier(vae, train_data, test_data, epochs=30, foldername=ae_foldername)
@@ -177,12 +177,12 @@ else:
 
 #plot_rescaled_trajectories(opt=args, foldername=foldername, dataloader=test_loader, nsample=args.nsample, Mred=10)
 try:
-    plot_flat_results(opt=args, foldername=foldername, autoencoder=vae, nsample=args.nsample)
+    plot_results(opt=args, foldername=foldername, autoencoder=vae, nsample=args.nsample)
 except:
     print('Error in plotting results, probably due to the shape of the data')
     pass
 
-plot_flat_results(opt=args, foldername=foldername, autoencoder=vae, nsample=args.nsample)
+#plot_results(opt=args, foldername=foldername, autoencoder=vae, nsample=args.nsample)
 
 #plot_rescaled_3dline(opt=args, foldername=foldername, dataloader=train_loader, nsample=args.nsample)
 

@@ -1,0 +1,28 @@
+{
+    "train": {
+        "epochs": 185,
+        "batch_size": 128,
+        "lr": 0.0005
+    },
+    "diffusion": {
+        "layers": 4,
+        "channels": 32,
+        "nheads": 8,
+        "diffusion_embedding_dim": 2,
+        "beta_start": 0.0001,
+        "beta_end": 0.5,
+        "num_steps": 8,
+        "schedule": "student",
+        "input_dim": 2,
+        "traj_len": 24,
+        "gamma": 0.3,
+        "side_dim": 129
+    },
+    "model": {
+        "is_unconditional": false,
+        "timeemb": 64,
+        "featureemb": 64,
+        "target_strategy": "test",
+        "test_missing_ratio": -1.0
+    }
+}

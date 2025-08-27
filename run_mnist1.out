@@ -1,0 +1,71 @@
+Namespace(config='base.yaml', device='cuda:0', seed=876, testmissingratio=-1.0, nfold=0, target_dim=2, eval_length=2, model_name='MNIST', unconditional=False, modelfolder='', nsample=1, ntrajs=1, nepochs=100, batch_size=128, lr=0.0001, scaling_flag=True, q=0.9, load=False, rob_flag=False, active_flag=False, implicit_flag=True, map_type='MNIST', gamma=0.0)
+False
+False
+{
+    "train": {
+        "epochs": 100,
+        "batch_size": 128,
+        "lr": 0.0001
+    },
+    "diffusion": {
+        "layers": 4,
+        "channels": 64,
+        "nheads": 8,
+        "diffusion_embedding_dim": 2,
+        "beta_start": 0.0001,
+        "beta_end": 0.5,
+        "num_steps": 16,
+        "schedule": "quad",
+        "input_dim": 2,
+        "traj_len": 2,
+        "gamma": 0.0
+    },
+    "model": {
+        "is_unconditional": false,
+        "timeemb": 64,
+        "featureemb": 64,
+        "target_strategy": "test",
+        "test_missing_ratio": -1.0
+    }
+}
+model folder: ./save/MNIST/DIFF/ID_UNC38/
+target dim is:  2
+model folder: ./save/fVAE/fVAE_201/
+Epoca: 1/20 	 Loss: 1247
+Epoca: 2/20 	 Loss: 1224
+Epoca: 3/20 	 Loss: 1167
+Epoca: 4/20 	 Loss: 1154
+Epoca: 5/20 	 Loss: 1181
+Epoca: 6/20 	 Loss: 961
+Epoca: 7/20 	 Loss: 1131
+Epoca: 8/20 	 Loss: 1170
+Epoca: 9/20 	 Loss: 1263
+Epoca: 10/20 	 Loss: 1040
+Epoca: 11/20 	 Loss: 1014
+Epoca: 12/20 	 Loss: 1051
+Epoca: 13/20 	 Loss: 1176
+Epoca: 14/20 	 Loss: 1064
+Epoca: 15/20 	 Loss: 956
+Epoca: 16/20 	 Loss: 1159
+Epoca: 17/20 	 Loss: 984
+Epoca: 18/20 	 Loss: 1049
+Epoca: 19/20 	 Loss: 1167
+Epoca: 20/20 	 Loss: 999
+decoded shape:  torch.Size([1, 1, 28, 28])
+
+✨ Best validation loss updated to 7045.1687 at epoch 5
+
+✨ Best validation loss updated to 7040.7262 at epoch 15
+
+✨ Best validation loss updated to 7014.8515 at epoch 75
+Training time:  1564.9388551712036
+evaluation using the implicit version of the forward process for model
+Evaluation using the implicit version of the model over the test dataset...
+Plotting images...
+samples len is:  157
+target len is:  157
+samples shape is:  torch.Size([64, 1, 1, 2])
+target shape is:  torch.Size([64, 1, 2])
+N is: 157
+M is: 64
+process terminated for model: 38

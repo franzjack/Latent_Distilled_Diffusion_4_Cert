@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader, Dataset
 import matplotlib.pyplot as plt
 device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-latent_dims: int = 2
+
 
 class Encoder(nn.Module):
     def __init__(self, latent_dims: int) -> None:
@@ -56,6 +56,35 @@ class FlatDecoder(nn.Module):
         z: torch.Tensor = torch.sigmoid(z)
         return z
     
+class DecoderConvTranspose(nn.Module):
+    def __init__(self, latent_dims: int):
+        super().__init__()
+        self.fc = nn.Linear(latent_dims, 7*7*64)
+        # Transposed conv: upsample from 7x7 → 14x14 → 28x28
+        self.deconv1 = nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1)
+        self.deconv2 = nn.ConvTranspose2d(32, 1, kernel_size=4, stride=2, padding=1)
+
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
+        h = F.relu(self.fc(z))
+        h = h.view(-1, 64, 7, 7)
+        h = F.relu(self.deconv1(h))
+        h = torch.sigmoid(self.deconv2(h))
+        return h
+    
+
+class DecoderUpsample(nn.Module):
+    def __init__(self, latent_dims: int):
+        super().__init__()
+        self.fc = nn.Linear(latent_dims, 7*7*64)
+        self.conv1 = nn.Conv2d(64, 32, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(32, 1, kernel_size=3, padding=1)
+
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
+        h = F.relu(self.fc(z))
+        h = h.view(-1, 64, 7, 7)
+        h = F.relu(self.conv1(F.interpolate(h, scale_factor=2, mode='nearest')))  # 7 → 14
+        h = torch.sigmoid(self.conv2(F.interpolate(h, scale_factor=2, mode='nearest')))  # 14 → 28
+        return h
 
 class VariationalEncoder(nn.Module):
     def __init__(self, latent_dims: int) -> None:
@@ -107,7 +136,7 @@ class FlatVariationalAutoencoder(nn.Module):
     def __init__(self, latent_dims: int) -> None:
         super().__init__()
         self.encoder: nn.Module = VariationalEncoder(latent_dims)
-        self.decoder: nn.Module = FlatDecoder(latent_dims)
+        self.decoder: nn.Module = DecoderConvTranspose(latent_dims)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         z: torch.Tensor = self.encoder(x)
@@ -171,7 +200,7 @@ def ae_train(autoencoder: nn.Module, data: DataLoader, epochs: int = 20, foldern
     return autoencoder
 
 
-def generate_images_grid(autoencoder: nn.Module, num_samples: int, foldername:str):
+def generate_images_grid(autoencoder: nn.Module, num_samples: int, foldername:str, latent_dims: int = 2) -> None:
     z = torch.randn(num_samples, latent_dims, device=device)
     x = autoencoder.decoder(z)
     fig = plt.figure()
@@ -199,8 +228,10 @@ class LatentClassifier(nn.Module):
 def train_latent_classifier(vae: VariationalAutoencoder,
                             train_loader: DataLoader,
                             test_loader: DataLoader,
+                            latent_dims: int = 2,
                             epochs: int = 10,
                             foldername: str ="") -> LatentClassifier:
+    
     
     classifier = LatentClassifier(latent_dims).to(device)
     optimizer = torch.optim.Adam(classifier.parameters(), lr=1e-3)

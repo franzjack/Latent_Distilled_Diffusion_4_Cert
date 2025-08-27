@@ -1,0 +1,40 @@
+/var/spool/slurmd/job19327967/slurm_script: line 14: conda: command not found
+  0%|          | 0/938 [00:00<?, ?it/s] 13%|█▎        | 119/938 [00:00<00:03, 237.02it/s] 27%|██▋       | 255/938 [00:01<00:02, 256.60it/s] 42%|████▏     | 391/938 [00:01<00:02, 262.75it/s] 56%|█████▌    | 525/938 [00:02<00:01, 264.62it/s] 70%|███████   | 660/938 [00:02<00:01, 266.51it/s] 85%|████████▍ | 795/938 [00:03<00:00, 267.66it/s] 99%|█████████▉| 931/938 [00:03<00:00, 268.83it/s]100%|██████████| 938/938 [00:03<00:00, 265.15it/s]
+Traceback (most recent call last):
+  File "/leonardo/home/userexternal/fgiacoma/repos/Latent_Distilled_Diffusion_4_Cert/Cert_algs/certify_vae.py", line 186, in <module>
+    output_vae = verifier_vanilla(gen_mod, M=M_MAX, eps_start = EPS, Zstar = Zstar, model_id = "MNIST_VAE")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo/home/userexternal/fgiacoma/repos/Latent_Distilled_Diffusion_4_Cert/Cert_algs/verification.py", line 507, in verifier_vanilla
+    lb_bstl, ub_bstl = bounded_model.compute_bounds(x=(bounded_traj_z,), method='backward')
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo/home/userexternal/fgiacoma/micromamba/envs/cert/lib/python3.12/site-packages/auto_LiRPA/bound_general.py", line 1402, in compute_bounds
+    return self._compute_bounds_main(C=C,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo/home/userexternal/fgiacoma/micromamba/envs/cert/lib/python3.12/site-packages/auto_LiRPA/bound_general.py", line 1500, in _compute_bounds_main
+    self.check_prior_bounds(final, C=C)
+  File "/leonardo/home/userexternal/fgiacoma/micromamba/envs/cert/lib/python3.12/site-packages/auto_LiRPA/bound_general.py", line 947, in check_prior_bounds
+    self.check_prior_bounds(n)
+  File "/leonardo/home/userexternal/fgiacoma/micromamba/envs/cert/lib/python3.12/site-packages/auto_LiRPA/bound_general.py", line 947, in check_prior_bounds
+    self.check_prior_bounds(n)
+  File "/leonardo/home/userexternal/fgiacoma/micromamba/envs/cert/lib/python3.12/site-packages/auto_LiRPA/bound_general.py", line 947, in check_prior_bounds
+    self.check_prior_bounds(n)
+  [Previous line repeated 1 more time]
+  File "/leonardo/home/userexternal/fgiacoma/micromamba/envs/cert/lib/python3.12/site-packages/auto_LiRPA/bound_general.py", line 965, in check_prior_bounds
+    self.compute_intermediate_bounds(
+  File "/leonardo/home/userexternal/fgiacoma/micromamba/envs/cert/lib/python3.12/site-packages/auto_LiRPA/bound_general.py", line 1049, in compute_intermediate_bounds
+    node.lower, node.upper = self.backward_general(
+                             ^^^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo/home/userexternal/fgiacoma/micromamba/envs/cert/lib/python3.12/site-packages/auto_LiRPA/backward_bound.py", line 282, in backward_general
+    A, lower_b, upper_b = l.bound_backward(
+                          ^^^^^^^^^^^^^^^^^
+  File "/leonardo/home/userexternal/fgiacoma/micromamba/envs/cert/lib/python3.12/site-packages/auto_LiRPA/operators/add_sub.py", line 43, in bound_backward
+    uA_x = _bound_oneside(last_uA, x)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo/home/userexternal/fgiacoma/micromamba/envs/cert/lib/python3.12/site-packages/auto_LiRPA/operators/add_sub.py", line 41, in _bound_oneside
+    return self.broadcast_backward(last_A, w)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/leonardo/home/userexternal/fgiacoma/micromamba/envs/cert/lib/python3.12/site-packages/auto_LiRPA/operators/base.py", line 452, in broadcast_backward
+    assert A.shape[2:] == shape[1:]  # skip the spec and batch dimension.
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+srun: error: lrdn3221: task 0: Exited with exit code 1

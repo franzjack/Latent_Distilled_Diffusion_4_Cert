@@ -7,6 +7,8 @@ from auto_LiRPA import BoundedModule, BoundedTensor
 from auto_LiRPA.perturbations import *
 import matplotlib.pyplot as plt
 import pickle
+import time
+
 plt.rcParams.update({'font.size': 22})
 
 torch.manual_seed(5)
@@ -467,7 +469,7 @@ def verifier_heterog_increment2(bmodel, qmodel,weight = 0.1, M=1, epsilon = 0.00
 
       list_path = os.path.join('results','DIFF', model_id+'_HET_N='+str(len(B_list))+'.pkl')
       tmp_balls = {"ball_list": B_list}
-      with open(list_path, "wb") as f:
+      with open(list_path, "wb") as f: 
           pickle.dump(tmp_balls, f)
 
 
@@ -475,11 +477,14 @@ def verifier_heterog_increment2(bmodel, qmodel,weight = 0.1, M=1, epsilon = 0.00
 
 
 def verifier_vanilla(model,Zstar, M=1, eps_start = 0.001, device = device, model_id=''):
+  start_time = time.time()
 
   norm = np.inf
   
   
-  print('z pivot = ', Zstar)
+  print('z pivot shape = ', Zstar.shape)
+
+
 
 
   print("vanilla test started")
@@ -496,13 +501,18 @@ def verifier_vanilla(model,Zstar, M=1, eps_start = 0.001, device = device, model
   ptb = PerturbationLpNorm(norm = norm, eps = eps)
   # Input tensor is wrapped in a BoundedTensor object.
   bounded_traj_z = BoundedTensor(Zstar, ptb)
+
+  
   print('Model prediction:', bounded_model(bounded_traj_z))
 
   print('Bounding method: backward (CROWN, DeepPoly)')
   with torch.no_grad():  # If gradients of the bounds are not needed, we can use no_grad to save memory.
-    lb_bstl, ub_bstl = bounded_model.compute_bounds(x=(bounded_traj_z), method='backward')
+    lb_bstl, ub_bstl = bounded_model.compute_bounds(x=(bounded_traj_z,), method='backward')
 
   print(f'lb = {lb_bstl}, ub = {ub_bstl}')
+
+  print("--- %s seconds ---" % (time.time() - start_time))
+
   return (Zstar, epsilon, lb_bstl, ub_bstl)
 
 
