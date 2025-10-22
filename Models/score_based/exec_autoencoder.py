@@ -12,7 +12,7 @@ from typing import Tuple
 from torch.utils.data import DataLoader, Dataset
 import matplotlib.pyplot as plt
 device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-from vae import Autoencoder, Decoder, ae_train, generate_images_grid
+from Models.score_based.vae_mnist import Autoencoder, Decoder, ae_train, generate_images_grid
 from mnist_data import get_mnist_dataloader
 
 

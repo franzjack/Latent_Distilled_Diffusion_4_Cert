@@ -24,7 +24,7 @@ import numpy as np
 device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 import torch
 from torch import nn
-from vae import VariationalAutoencoder, Decoder, vae_train, LatentClassifier, evaluate_latent_classifier, train_latent_classifier
+from Models.score_based.vae_mnist import FlatVariationalAutoencoder, Decoder, vae_train, LatentClassifier, evaluate_latent_classifier, train_latent_classifier
 from mnist_data import get_mnist_dataloader
 
 
@@ -37,13 +37,13 @@ parser.add_argument("--testmissingratio", type=float, default=-1.0)
 parser.add_argument(
     "--nfold", type=int, default=0, help="for 5fold test (valid value:[0-4])"
 )
-parser.add_argument("--target_dim", type=int, default=2)
-parser.add_argument("--eval_length", type=int, default=24)
+parser.add_argument("--target_dim", type=int, default=4)
+parser.add_argument("--eval_length", type=int, default=4)
 parser.add_argument("--model_name", type=str, default="MNIST")
 parser.add_argument("--unconditional", default=False)#, action="store_true"
 parser.add_argument("--teacher_folder", type=str, default="")
 parser.add_argument("--student_folder", type=str, default="")
-parser.add_argument("--modelfolder", type=str, default="75")
+parser.add_argument("--modelfolder", type=str, default="111")
 parser.add_argument("--nsample", type=int, default=1)
 parser.add_argument("--ntrajs", type=int, default=1)
 parser.add_argument("--nepochs", type=int, default=185)
@@ -60,9 +60,9 @@ parser.add_argument("--gamma", type=float, default=0.3)
 
 TRAIN = True
 SINGLE = False
-FIRST_STEP = True
+FIRST_STEP = False
 COMPARED = True
-next_dist_step = 0
+next_dist_step = 1
 
 #parser.add_argument("--diffsteps", type=int, default=20)
 #parser.add_argument("--difflayers", type=int, default=6)
@@ -99,14 +99,14 @@ print(config["model"]["is_unconditional"])
 config_teacher = copy.deepcopy(config)
 config_student = copy.deepcopy(config)
 
-aefolder = 401
 
-ae_foldername = "./save/VAE/VAE_401/"
 
-ae_latent_dims: int = 2
+ae_foldername = "./save/VAE_mnist/VAE_137/"
+
+ae_latent_dims: int = 4
 train_data, test_data = get_mnist_dataloader(root='./data/', batch_size=64)
 
-vae: nn.Module = VariationalAutoencoder(ae_latent_dims).to(device)
+vae: nn.Module = FlatVariationalAutoencoder(ae_latent_dims).to(device)
 
 
 

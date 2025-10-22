@@ -1,0 +1,15 @@
+/*.out
+/*.err
+/*.sh
+/*.yml
+/*.slurm
+/*.pkl
+/*.png
+/*.pyc
+prod_cert.sh
+prod_class_vae.sh
+prod_dist_mnist.sh
+prod_mnist.sh
+save/
+leonardo_scratch/
+data/cifar10/

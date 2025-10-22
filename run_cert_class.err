@@ -1,4 +1,0 @@
-/var/spool/slurmd/job19363278/slurm_script: line 14: conda: command not found
-  0%|          | 0/938 [00:00<?, ?it/s] 14%|█▍        | 129/938 [00:00<00:03, 257.73it/s] 28%|██▊       | 259/938 [00:01<00:02, 258.25it/s] 42%|████▏     | 390/938 [00:01<00:02, 259.52it/s] 55%|█████▌    | 520/938 [00:02<00:01, 258.89it/s] 69%|██████▉   | 650/938 [00:02<00:01, 258.22it/s] 83%|████████▎ | 781/938 [00:03<00:00, 259.24it/s] 97%|█████████▋| 911/938 [00:03<00:00, 258.22it/s]100%|██████████| 938/938 [00:03<00:00, 258.56it/s]
-/leonardo/home/userexternal/fgiacoma/micromamba/envs/cert/lib/python3.12/site-packages/auto_LiRPA/bound_general.py:1021: UserWarning: Creating an identity matrix with size 6272x6272 for node BoundConvTranspose(name=/5891, inputs=[/5890, /273, /274], perturbed=True). This may indicate poor performance for bound computation. If you see this message on a small network please submit a bug report.
-  sparse_C = self.get_sparse_C(node, ref_intermediate)

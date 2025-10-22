@@ -6,9 +6,9 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --gres=gpu:1
-#SBATCH --job-name=dist_mnist
-#SBATCH -o run_class.out
-#SBATCH -e run_class.err
+#SBATCH --job-name=vae_mnist
+#SBATCH -o run_vae64.out
+#SBATCH -e run_vae64.err
 
 source ~/.bashrc
 conda activate cert

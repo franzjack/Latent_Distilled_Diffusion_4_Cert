@@ -7,12 +7,12 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --gres=gpu:1
 #SBATCH --job-name=cert_vae
-#SBATCH -o run_cert_vae1.out
-#SBATCH -e run_cert_vae1.err
+#SBATCH -o run_cert_mnist64_32.out
+#SBATCH -e run_cert_mnist64_32.err
 
 source ~/.bashrc
 conda activate cert
 
 export LD_LIBRARY_PATH=/leonardo/home/userexternal/fgiacoma/micromamba/envs/cert/lib:$LD_LIBRARY_PATH
 
-srun python Cert_algs/certify_vae.py
+srun python Cert_algs/certify_mnist.py

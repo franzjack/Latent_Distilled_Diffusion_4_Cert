@@ -30,7 +30,7 @@ import stl
 from verification import *
 
 from Models.score_based.main_mnist import Generator, diff_CSDI, absCSDI
-from Models.score_based.vae import FlatVariationalAutoencoder, Decoder, vae_train, LatentClassifier, evaluate_latent_classifier, train_latent_classifier
+from Models.score_based.vae_mnist import FlatVariationalAutoencoder, Decoder, vae_train, LatentClassifier, evaluate_latent_classifier, train_latent_classifier
 
 from Models.score_based.mnist_data import get_mnist_dataloader
 

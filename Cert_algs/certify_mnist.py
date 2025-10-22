@@ -30,7 +30,7 @@ import stl
 from verification import *
 
 from Models.score_based.main_mnist import Generator, diff_CSDI, absCSDI
-from Models.score_based.vae import VariationalAutoencoder, Decoder, vae_train, LatentClassifier, evaluate_latent_classifier, train_latent_classifier
+from Models.score_based.vae_mnist import FlatVariationalAutoencoder, Decoder, vae_train, LatentClassifier, evaluate_latent_classifier, train_latent_classifier
 
 from Models.score_based.mnist_data import get_mnist_dataloader
 
@@ -48,15 +48,15 @@ train_data, test_data = get_mnist_dataloader(root='./data/', batch_size=64)
 print("test_data size: ", len(test_data))
 
 
-ae_latent_dims: int = 2
+ae_latent_dims: int = 64
 train_data, test_data = get_mnist_dataloader(root='./data/', batch_size=64)
 
-vae: nn.Module = VariationalAutoencoder(ae_latent_dims).to(device)
+vae: nn.Module = FlatVariationalAutoencoder(ae_latent_dims).to(device)
 
-aefolder = 401
+aefolder = 27
 
 ae_foldername = ""
-ae_foldername = "./save/fVAE/fVAE_446/"
+ae_foldername = "./save/VAE_mnist/VAE_111/"
 
 
 # Check if the autoencoder model exists, if not, train it
@@ -78,16 +78,16 @@ else:
 
 
 
-conf_path = os.path.join(parent_dir,"Models","score_based","config","base.yaml")
+conf_path = os.path.join(parent_dir,"Models","score_based","config","base32.yaml")
 
 with open(conf_path, "r") as f:
     config = yaml.safe_load(f)
 
-config["train"]["batch_size"] = 64
+config["train"]["batch_size"] = 128
 config["model"]["test_missing_ratio"] = -1
 config["model"]["is_unconditional"] = False
-config["diffusion"]["input_dim"] = 2
-config["diffusion"]["traj_len"] = 1
+config["diffusion"]["input_dim"] = ae_latent_dims
+config["diffusion"]["traj_len"] = ae_latent_dims
 config["diffusion"]["gamma"] = 0.3
 
 config_8 = deepcopy(config)
@@ -104,45 +104,45 @@ config_4["diffusion"]["schedule"] = "custom"
 
 modelname = "MNIST"
 arch = "DIFF"
-gen_id = "ID_UNC283"
-gen_id_8 = "ID_UNC426/distill_8"
-gen_id_4 = "ID_UNC426/distill_4"
-model_diff = absCSDI(config, device ,target_dim=2).to(device)
+gen_id = "ID_UNC306"
+#gen_id_8 = "ID_UNC111/distill_8"
+#gen_id_4 = "ID_UNC111/distill_4"
+model_diff = absCSDI(config, device ,target_dim=ae_latent_dims).to(device)
 
 mod_path = os.path.join(parent_dir, 'save', modelname, arch, gen_id, 'fullmodel.pth')
-mod_path_8 = os.path.join(parent_dir, 'save', modelname, arch, gen_id_8, 'student_fullmodel.pth')
-mod_path_4 = os.path.join(parent_dir, 'save', modelname, arch, gen_id_4, 'student_fullmodel.pth')
-path_8 = os.path.join(parent_dir, 'save', modelname, arch, gen_id_8, 'alphas.pkl')
-path_4 = os.path.join(parent_dir, 'save', modelname, arch, gen_id_4, 'alphas.pkl')
+# mod_path_8 = os.path.join(parent_dir, 'save', modelname, arch, gen_id_8, 'student_fullmodel.pth')
+# mod_path_4 = os.path.join(parent_dir, 'save', modelname, arch, gen_id_4, 'student_fullmodel.pth')
+# path_8 = os.path.join(parent_dir, 'save', modelname, arch, gen_id_8, 'alphas.pkl')
+# path_4 = os.path.join(parent_dir, 'save', modelname, arch, gen_id_4, 'alphas.pkl')
 
-with open(path_8, "rb") as f:
-        alpha_8 = pickle.load(f)
+# with open(path_8, "rb") as f:
+#         alpha_8 = pickle.load(f)
 
-with open(path_4, "rb") as f:
-        alpha_4 = pickle.load(f)
+# with open(path_4, "rb") as f:
+#         alpha_4 = pickle.load(f)
 
-model_8 = absCSDI(config_8, device,target_dim=2, teacher_model = None, alphas = alpha_8).to(device)
-model_4 = absCSDI(config_4, device,target_dim=2, teacher_model = None, alphas = alpha_4).to(device)
+# model_8 = absCSDI(config_8, device,target_dim=4, teacher_model = None, alphas = alpha_8).to(device)
+# model_4 = absCSDI(config_4, device,target_dim=4, teacher_model = None, alphas = alpha_4).to(device)
 
 print('loading model from path: ', mod_path)
 model_diff.load_state_dict(torch.load(mod_path, map_location=device))
 model = Generator(model_diff)
 
-model_8.load_state_dict(torch.load(mod_path_8, map_location=device))
-model8 = Generator(model_8)
+# model_8.load_state_dict(torch.load(mod_path_8, map_location=device))
+# model8 = Generator(model_8)
 
-model_4.load_state_dict(torch.load(mod_path_4, map_location=device))
-model4 = Generator(model_4)
+# model_4.load_state_dict(torch.load(mod_path_4, map_location=device))
+# model4 = Generator(model_4)
 
 vae.eval()
 model.to(device)
 model.eval()
 
-model8.to(device)
-model8.eval()
+# model8.to(device)
+# model8.eval()
 
-model4.to(device)
-model4.eval()
+# model4.to(device)
+# model4.eval()
 
 with tqdm(train_data,
                   leave=True, dynamic_ncols=True, mininterval=0.5) as it:
@@ -178,8 +178,8 @@ Zstar = torch.randn_like(latent_shape, device = device)
 
 
 
-output = verifier_vanilla(model, M=M_MAX, eps_start = EPS, Zstar = Zstar, model_id = "MNIST")
+output = verifier_vanilla(model,Zstar = Zstar,  eps_start = EPS, model_id = "MNIST")
 
-output_8 = verifier_vanilla(model8, M=M_MAX, eps_start = EPS, Zstar = Zstar, model_id = "MNIST")
+# output_8 = verifier_vanilla(model8, M=M_MAX, eps_start = EPS, Zstar = Zstar, model_id = "MNIST")
 
-output_4 = verifier_vanilla(model4, M=M_MAX, eps_start = EPS, Zstar = Zstar, model_id = "MNIST")
+# output_4 = verifier_vanilla(model4, M=M_MAX, eps_start = EPS, Zstar = Zstar, model_id = "MNIST")

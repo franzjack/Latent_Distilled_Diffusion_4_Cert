@@ -7,12 +7,12 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --gres=gpu:1
 #SBATCH --job-name=dist_mnist
-#SBATCH -o run_mnist1.out
-#SBATCH -e run_mnist1.err
+#SBATCH -o run_mnist64_32.out
+#SBATCH -e run_mnist64_32.err
 
 source ~/.bashrc
 conda activate cert
 
 export LD_LIBRARY_PATH=/leonardo/home/userexternal/fgiacoma/micromamba/envs/cert/lib:$LD_LIBRARY_PATH
 
-srun python Models/score_based/exec_csdi_mnist.py --nepochs 100
+srun python Models/score_based/exec_csdi_mnist.py --nepochs 300 --config base32.yaml

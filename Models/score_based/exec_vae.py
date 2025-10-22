@@ -11,8 +11,8 @@ from tqdm.auto import trange
 from typing import Tuple
 import matplotlib.pyplot as plt
 device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-from vae import FlatVariationalAutoencoder, Decoder, vae_train, generate_images_grid
-from vae import LatentClassifier, train_latent_classifier, ImageClassifier, train_image_classifier, evaluate_latent_classifier ,evaluate_on_reconstructions
+from vae_mnist import FlatVariationalAutoencoder, Decoder, vae_train, generate_images_grid
+from vae_mnist import LatentClassifier, train_latent_classifier, ImageClassifier, train_image_classifier, evaluate_latent_classifier ,evaluate_on_reconstructions
 from mnist_data import get_mnist_dataloader
 
 
@@ -35,13 +35,16 @@ superdir = os.path.dirname(parent_dir)
 
 
 
-ae_latent_dims: int = 2
+ae_latent_dims: int = 64
 train_data, test_data = get_mnist_dataloader(root='./data/', batch_size=64)
 
 vae: nn.Module = FlatVariationalAutoencoder(ae_latent_dims).to(device)
 
 
-ae_foldername = "./save/fVAE/fVAE_137/"
+#aefolder = 137
+
+ae_foldername = ""
+#ae_foldername = "./save/VAE_mnist/VAE_137/"
 
 
 # Check if the autoencoder model exists, if not, train it
@@ -65,7 +68,7 @@ vae.eval()
 
 #generate_images_grid(vae, 64, foldername)
 
-classifier = train_latent_classifier(vae, train_data, test_data, epochs=30, foldername=ae_foldername)
+classifier = train_latent_classifier(vae, train_data, test_data, epochs=30, latent_dims=ae_latent_dims, foldername=ae_foldername)
 # Evaluate classifier
 evaluate_latent_classifier(vae, classifier, test_data)
 

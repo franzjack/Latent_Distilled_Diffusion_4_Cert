@@ -14,7 +14,7 @@ current_dir = os.path.dirname(os.path.realpath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 #from score_based.new_diffusion import diff_CSDI
-from score_based.diffusion_test import diff_CSDI
+from score_based.diffusion_mnist import diff_CSDI
 from tqdm import tqdm
 
 

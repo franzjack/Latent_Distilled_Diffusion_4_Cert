@@ -1365,3 +1365,22 @@ def plot_compared_results(opt, foldername, autoencoder, nsample, idx='test', dis
         save_path = os.path.join(foldername, f'CSDI_{opt.model_name}_step{dist_step}_student_vs_teacher_{idx}_{dataind}.png')
         plt.savefig(save_path, bbox_inches='tight')
         plt.close()
+
+
+
+def show_image_from_latent(foldername, autoencoder, latent, model_steps=16):
+    plt.rcParams.update({'font.size': 25})
+
+    print('Plotting image from latent...')
+
+    decoded = autoencoder(latent)
+
+    fig = plt.figure()
+    _ = plt.imshow(make_grid(decoded).permute(1, 2, 0).cpu().detach().numpy())
+    plt.xticks([])
+    plt.yticks([])
+    plt.show()
+    save_path = os.path.join(foldername, f'CSDI_image_from_latent_{model_steps}.png')
+    plt.savefig(save_path, bbox_inches='tight')
+    fig.close()
+

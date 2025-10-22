@@ -21,7 +21,7 @@ import numpy as np
 device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 import torch
 from torch import nn
-from vae import FlatVariationalAutoencoder, FlatDecoder, vae_train, LatentClassifier, evaluate_latent_classifier, train_latent_classifier
+from Models.score_based.vae_mnist import FlatVariationalAutoencoder, FlatDecoder, vae_train, LatentClassifier, evaluate_latent_classifier, train_latent_classifier
 from mnist_data import get_mnist_dataloader
 
 
@@ -33,8 +33,8 @@ parser.add_argument("--testmissingratio", type=float, default=-1.0)
 parser.add_argument(
     "--nfold", type=int, default=0, help="for 5fold test (valid value:[0-4])"
 )
-parser.add_argument("--target_dim", type=int, default=2)
-parser.add_argument("--eval_length", type=int, default=2)
+parser.add_argument("--target_dim", type=int, default=64)
+parser.add_argument("--eval_length", type=int, default=64)
 parser.add_argument("--model_name", type=str, default="MNIST")
 parser.add_argument("--unconditional", default=False)#, action="store_true"
 parser.add_argument("--modelfolder", type=str, default="")
@@ -110,7 +110,7 @@ print('target dim is: ',args.target_dim)
 
 ae_foldername = ""
 
-ae_latent_dims: int = 2
+ae_latent_dims: int = 64
 train_data, test_data = get_mnist_dataloader(root='./data/', batch_size=64)
 
 vae: nn.Module = FlatVariationalAutoencoder(ae_latent_dims).to(device)
@@ -118,18 +118,18 @@ vae: nn.Module = FlatVariationalAutoencoder(ae_latent_dims).to(device)
 
 #aefolder = 401
 
-#ae_foldername = "./save/VAE/VAE_401/"
+ae_foldername = "./save/VAE_mnist/VAE_111/"
 
 
 # Check if the autoencoder model exists, if not, train it
 if ae_foldername == "":
     aefolder = str(np.random.randint(0,500))
-    ae_foldername = f"./save/fVAE/fVAE_{aefolder}/"
+    ae_foldername = f"./save/VAE_mnist/VAE_{aefolder}/"
     print('model folder:', ae_foldername)
     os.makedirs(ae_foldername, exist_ok=True)
 
     vae.train()
-    vae: nn.Module = vae_train(vae, train_data, epochs = 20, foldername=ae_foldername)
+    vae: nn.Module = vae_train(vae, train_data, epochs = 50, foldername=ae_foldername)
     vae.eval()
 
 else:

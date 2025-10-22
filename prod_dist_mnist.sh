@@ -15,4 +15,4 @@ conda activate cert
 
 export LD_LIBRARY_PATH=/leonardo/home/userexternal/fgiacoma/micromamba/envs/cert/lib:$LD_LIBRARY_PATH
 
-srun python Models/score_based/exec_distillation_mnist.py --modelfolder 75 --nepochs 1000 --gamma 0.0
+srun python Models/score_based/exec_distillation_mnist.py --modelfolder 111 --nepochs 200 --gamma 0.0

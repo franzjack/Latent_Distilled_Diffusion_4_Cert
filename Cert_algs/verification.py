@@ -4,10 +4,11 @@ import torch
 import os
 from copy import copy
 from auto_LiRPA import BoundedModule, BoundedTensor
-from auto_LiRPA.perturbations import *
+from auto_LiRPA.perturbations import PerturbationLpNorm
 import matplotlib.pyplot as plt
 import pickle
 import time
+from scipy.stats import truncnorm
 
 plt.rcParams.update({'font.size': 22})
 
@@ -476,47 +477,124 @@ def verifier_heterog_increment2(bmodel, qmodel,weight = 0.1, M=1, epsilon = 0.00
   return B_list
 
 
-def verifier_vanilla(model,Zstar, M=1, eps_start = 0.001, device = device, model_id=''):
+def verifier_vanilla(model,Zstar, eps_start = 0.001, model_id=''):
   start_time = time.time()
 
   norm = np.inf
+
+
+  print("new test started")
+
   
-  
-  print('z pivot shape = ', Zstar.shape)
-
-
-
-
-  print("vanilla test started")
-
-  print('Original model prediction:', model(Zstar))
     
-  epsilon = eps_start
+  eps = eps_start
   bounded_model = BoundedModule(model, torch.zeros_like(Zstar), bound_opts={"conv_mode": "tensor",'sparse_intermediate_bounds': False,
           'sparse_conv_intermediate_bounds': False,'sparse_intermediate_bounds_with_ibp': False},verbose=True)
   bounded_model.eval()
 
-  eps = epsilon
+  
   norm = norm
   ptb = PerturbationLpNorm(norm = norm, eps = eps)
   # Input tensor is wrapped in a BoundedTensor object.
   bounded_traj_z = BoundedTensor(Zstar, ptb)
 
   
+
+  print('printing model prediction and bounds for model id: '+ model_id)
   print('Model prediction:', bounded_model(bounded_traj_z))
 
-  print('Bounding method: backward (CROWN, DeepPoly)')
   with torch.no_grad():  # If gradients of the bounds are not needed, we can use no_grad to save memory.
-    lb_bstl, ub_bstl = bounded_model.compute_bounds(x=(bounded_traj_z,), method='backward')
+    lb, ub = bounded_model.compute_bounds(x=(bounded_traj_z,), method='backward')
 
-  print(f'lb = {lb_bstl}, ub = {ub_bstl}')
+  print(f'lb = {lb}, ub = {ub}')
+
+  print("current perutation radius is: ", eps)
+
+  try:
+    lower_mse = torch.mean((Zstar - lb)**2).item()
+    upper_mse = torch.mean((Zstar - ub)**2).item()
+    print("mean squared error distance from center to lower bound: ", lower_mse)
+    print("mean squared error distance from center to upper bound: ", upper_mse)
+    
+  except:
+    print("Could not compute mean squared error distance from center to bounds")
 
   print("--- %s seconds ---" % (time.time() - start_time))
 
-  return (Zstar, epsilon, lb_bstl, ub_bstl)
+  return (bounded_model(bounded_traj_z), lb, ub, eps)
 
 
-from scipy.stats import truncnorm
+
+def multiple_eps_verifier(model, Zstar, eps_list = [0.001, 0.002, 0.005, 0.01], model_id=''):
+  results = []
+  for eps in eps_list:
+    print('Starting verification with eps = ', eps)
+    result = verifier_vanilla(model, Zstar, eps_start = eps, model_id=model_id)
+    results.append((eps, result))
+  return results
+
+
+def optimize_latent_class(z0, gen_dec, classifier, target_class, 
+                    steps=200, lr=0.05, l2_reg=0.0, 
+                    device="cuda", plot=False):
+    """
+    Gradient ascent in latent space to find points classified as a target digit.
+
+    Args:
+        z0 (torch.Tensor): Initial latent point, shape [1, latent_dim].
+        gen_dec (nn.Module): Model that maps latent z -> decoded image.
+        classifier (nn.Module): Image classifier (outputs logits).
+        target_class (int): Target digit to optimize for.
+        steps (int): Number of optimization steps.
+        lr (float): Learning rate for Adam.
+        l2_reg (float): Optional L2 penalty on latent.
+        device (str): "cuda" or "cpu".
+
+    Returns:
+        torch.Tensor: Optimized latent point.
+        torch.Tensor: Final logits.
+    """
+    # clone z0 so we don’t overwrite input
+    z = z0.clone().detach().to(device)
+    z.requires_grad_(True)
+
+    optimizer = torch.optim.Adam([z], lr=lr)
+
+    for step in range(steps):
+        optimizer.zero_grad()
+        signal = gen_dec(z)                 # decoded image
+        logits = classifier(signal)         # classifier output
+        objective = logits[:, target_class].mean()
+
+        # maximize
+        loss = -objective
+        if l2_reg > 0:
+            prior_reg = 0.5 * (z ** 2).sum(dim=1).mean()
+            loss = loss + torch.tensor(l2_reg, device=z.device, dtype=z.dtype) * prior_reg
+
+        loss.backward()
+        optimizer.step()
+
+    # ---- final decode and plot ----
+    with torch.no_grad():
+        final_signal = gen_dec(z)
+        final_logits = classifier(final_signal)
+        pred_class = final_logits.argmax(dim=1).item()
+        img = final_signal.squeeze().detach().cpu().numpy()
+
+    if plot:
+        plt.imshow(img, cmap="gray")
+        plt.title(
+            f"Target {target_class}, Pred {pred_class}\nLogits: {final_logits.detach().cpu().numpy()}"
+        )
+        plt.axis("off")
+        plt.savefig(f'opt_output_for_{target_class}.png')
+        plt.close()
+
+    z_final = z.detach().to(z0.device).to(z0.dtype)
+    return z_final, final_logits.detach()
+
+
 
 
 
