@@ -222,7 +222,7 @@ Z0 = torch.randn_like(latent_shape, device = device)
 
 model_dec = DecGen(model, vae.decoder)
 
-Zstar = optimize_latent_class(z0 = Z0, gen_dec =model_dec, classifier=classifier,target_class=6, l2_reg=0.01)
+Zstar, = optimize_latent_class(z0 = Z0, gen_dec =model_dec, classifier=classifier,target_class=6, l2_reg=0.01)
 
 class_mod = ClassGen(model, vae.decoder, classifier)
 class_mod.to(device)
